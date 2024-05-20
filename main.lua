@@ -111,6 +111,7 @@ local function getAvgDelta()
 end
 
 --#region Toasts
+
 ---@class toast
 ---@field title string
 ---@field message string|love.Image
@@ -145,7 +146,7 @@ local function insertToastFromQueue(height_limit)
 			end
 		end
 	end
-	if total_height > height_limit then
+	if total_height > height_limit and (result_toast.height < height_limit or next(toasts)) then
 		return
 	end
 	result_toast.y = y_pos
@@ -162,10 +163,10 @@ local function drawToasts()
 	for idx, toast in pairs(toasts) do
 		if toast.time > 300 then
 			toast.back = true
-			toast.time = toast.width/8
+			toast.time = 30
 		end
 		toast.time = toast.time + (toast.back and -1 or 1)
-		local factor = math.min(toast.width/8, toast.time) / (toast.width/8)
+		local factor = math.min(30, toast.time) / 30
 		local sliding_pos = toast.width * factor * factor
 		if toast.back == true then
 			sliding_pos = toast.width * easeOutQuad(factor)
@@ -175,28 +176,36 @@ local function drawToasts()
 		love.graphics.setColor(0.6, 0.6, 0.6)
 		love.graphics.rectangle("line", scaled_screen_x + 2 - sliding_pos, toast.y + 2, toast.width - 4, toast.height - 4)
 		love.graphics.setFont(font_3x5_2)
-		local message_overflow
+
+		local message_lines = 0
 		if type(toast.message) == "string" then
-			message_overflow = font_3x5_2:getWidth(toast.message) > toast.width - 30
+			---@diagnostic disable-next-line: param-type-mismatch
+			local _, wrapped_message = font_3x5_2:getWrap(toast.message, toast.width - 30)
+			message_lines = #wrapped_message
 		end
-		local title_overflow = font_3x5_2:getWidth(toast.title) > toast.width - 30
+		local _, wrapped_title = font_3x5_2:getWrap(toast.title, toast.width - 30)
+		local title_lines = #wrapped_title
 		local half_toast_height = toast.height / 2
----@diagnostic disable-next-line: param-type-mismatch
-		if message_overflow or title_overflow then
-			love.graphics.setColor(1, 1, 0, toast.back and 0 or math.max(0, 4 - toast.time / 30))
-			love.graphics.printf(toast.title, scaled_screen_x + 10 - sliding_pos, toast.y + (title_overflow and 0 or 10), toast.width - 20, "left")
-			love.graphics.setColor(1, 1, 1, toast.back and 1 or 1 - math.max(0, 5 - toast.time / 30))
-			love.graphics.printf(toast.message, scaled_screen_x + 10 - sliding_pos, toast.y, toast.width - 20, "left")
+
+		local title_alpha = 1
+		local message_alpha = 1
+		local title_offset = 0
+		local message_offset = half_toast_height
+		local font_height = font_3x5_2:getHeight()
+		if font_height * (title_lines + message_lines) > toast.height then
+			title_alpha = toast.back and 0 or math.max(0, 4 - toast.time / 30)
+			message_alpha = toast.back and 1 or 1 - math.max(0, 5 - toast.time / 30)
+			title_offset = half_toast_height - title_lines * font_height / 2
+			message_offset = half_toast_height - message_lines * font_height / 2
+		end
+		local text_pos_x = scaled_screen_x + 10 - sliding_pos
+		love.graphics.setColor(1, 1, 0, title_alpha)
+		love.graphics.printf(toast.title, text_pos_x, toast.y + title_offset, toast.width - 20, "left")
+		love.graphics.setColor(1, 1, 1, message_alpha)
+		if toast.message.typeOf and toast.message:typeOf("Image") then
+			drawSizeIndependentImage(toast.message, text_pos_x, toast.y + 20, 0, toast.width - 20, toast.height - 30)
 		else
-			love.graphics.setColor(1, 1, 0, 1)
-			love.graphics.printf(toast.title, scaled_screen_x + 10 - sliding_pos, toast.y, toast.width - 20, "left")
-			if toast.message.typeOf and toast.message:typeOf("Image") then
-				love.graphics.setColor(1, 1, 1, 1)
-				drawSizeIndependentImage(toast.message, scaled_screen_x + 10 - sliding_pos, toast.y + 20, 0, toast.width - 20, toast.height - 30)
-			else
-				love.graphics.setColor(1, 1, 1, 1)
-				love.graphics.printf(toast.message, scaled_screen_x + 10 - sliding_pos, toast.y + half_toast_height, toast.width - 20, "left")
-			end
+			love.graphics.printf(toast.message, text_pos_x, toast.y + message_offset, toast.width - 20, "left")
 		end
 		if toast.time < 0 and toast.back then
 			toasts[idx] = nil
