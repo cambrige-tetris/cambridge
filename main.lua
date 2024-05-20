@@ -78,7 +78,11 @@ end
 ---@param image love.ImageData
 local function screenshotFunction(image)
 	playSE("screenshot")
-	screenshot_images[#screenshot_images+1] = {image = love.graphics.newImage(image), time = 0, y_position = #screenshot_images * 260}
+	local image_x, image_y = image:getDimensions()
+	local local_scale_factor = math.min(image_x / 640, image_y / 480)
+	local width = image_x / local_scale_factor / 3 + 30
+	local height = image_y / local_scale_factor / 3 + 30
+	createToast("Screenshot taken!", love.graphics.newImage(image), width, height)
 end
 
 local last_time = 0
@@ -106,30 +110,100 @@ local function getAvgDelta()
 	return last_fps
 end
 
---What a mess trying to do something with it
-local function drawScreenshotPreviews()
-	local accumulated_y = 0
-	for idx, value in ipairs(screenshot_images) do
-		local image_x, image_y = value.image:getDimensions()
-		local local_scale_factor = math.min(image_x / 640, image_y / 480)
-		value.time = value.time + math.max(value.time < 300 and 4 or 1, value.time / 10 - 30)
-		value.y_position = interpolateNumber(value.y_position, accumulated_y)
-		local scaled_width, scaled_zero = getScaledDimensions(love.graphics.getWidth(), 0)
-		local x = (scaled_width) - ((image_x / 4) / local_scale_factor) + math.max(0, value.time - 300)
-		local rect_x, rect_y, rect_w, rect_h = x - 1, scaled_zero + value.y_position - 1, ((image_x / 4) / local_scale_factor) + 2, ((image_y / 4) / local_scale_factor) + 2
-		love.graphics.setColor(0, 0, 0)
-		love.graphics.rectangle("fill", rect_x, rect_y, rect_w, rect_h)
-		love.graphics.setColor(1, 1, 1)
-		love.graphics.draw(value.image, x, scaled_zero + value.y_position, 0, 0.25 / local_scale_factor, 0.25 / local_scale_factor)
-		love.graphics.setColor(1, 1, 1, math.max(0, 1 - (value.time / 60)))
-		love.graphics.rectangle("fill", rect_x, rect_y, rect_w, rect_h)
-		if value.time > (image_x / local_scale_factor) + 100 then
-			value.image:release()
-			table.remove(screenshot_images, idx)
+--#region Toasts
+---@class toast
+---@field title string
+---@field message string|love.Image
+---@field time number
+---@field width number
+---@field height number
+---@field y number
+---@field back boolean|nil
+
+---@type toast[]
+local toasts = {}
+
+---@type toast[]
+local queued_toasts = {}
+
+function createToast(title, message, width, height)
+	local width = width or 200
+	local height = height or 40
+	table.insert(queued_toasts, {title = title, message = message, width = width, height = height, time = 0})
+end
+
+local function insertToastFromQueue(height_limit)
+	if #queued_toasts == 0 then return end
+	local idx, result_toast = next(queued_toasts)
+	local y_pos = 0
+	local total_height = result_toast.height
+	for _, v in next, toasts do
+		total_height = total_height + v.height
+		for _, v2 in next, toasts do
+			if y_pos + result_toast.height > v2.y and y_pos <= v2.y + v2.height then
+				y_pos = math.max(y_pos, v2.y + v2.height)
+			end
 		end
-		accumulated_y = accumulated_y + (image_y / local_scale_factor / 4) + 5
+	end
+	if total_height > height_limit then
+		return
+	end
+	result_toast.y = y_pos
+	table.remove(queued_toasts, idx)
+	table.insert(toasts, result_toast)
+end
+
+local function easeOutQuad(x)
+	return 1 - (1 - x) * (1 - x);
+end
+local function drawToasts()
+	insertToastFromQueue(280)
+	local scaled_screen_x, scaled_screen_y = getScaledDimensions(love.graphics.getDimensions())
+	for idx, toast in pairs(toasts) do
+		if toast.time > 300 then
+			toast.back = true
+			toast.time = toast.width/8
+		end
+		toast.time = toast.time + (toast.back and -1 or 1)
+		local factor = math.min(toast.width/8, toast.time) / (toast.width/8)
+		local sliding_pos = toast.width * factor * factor
+		if toast.back == true then
+			sliding_pos = toast.width * easeOutQuad(factor)
+		end
+		love.graphics.setColor(0.4, 0.4, 0.4)
+		love.graphics.rectangle("fill", scaled_screen_x - sliding_pos, toast.y, toast.width, toast.height)
+		love.graphics.setColor(0.6, 0.6, 0.6)
+		love.graphics.rectangle("line", scaled_screen_x + 2 - sliding_pos, toast.y + 2, toast.width - 4, toast.height - 4)
+		love.graphics.setFont(font_3x5_2)
+		local message_overflow
+		if type(toast.message) == "string" then
+			message_overflow = font_3x5_2:getWidth(toast.message) > toast.width - 30
+		end
+		local title_overflow = font_3x5_2:getWidth(toast.title) > toast.width - 30
+		local half_toast_height = toast.height / 2
+---@diagnostic disable-next-line: param-type-mismatch
+		if message_overflow or title_overflow then
+			love.graphics.setColor(1, 1, 0, toast.back and 0 or math.max(0, 4 - toast.time / 30))
+			love.graphics.printf(toast.title, scaled_screen_x + 10 - sliding_pos, toast.y + (title_overflow and 0 or 10), toast.width - 20, "left")
+			love.graphics.setColor(1, 1, 1, toast.back and 1 or 1 - math.max(0, 5 - toast.time / 30))
+			love.graphics.printf(toast.message, scaled_screen_x + 10 - sliding_pos, toast.y, toast.width - 20, "left")
+		else
+			love.graphics.setColor(1, 1, 0, 1)
+			love.graphics.printf(toast.title, scaled_screen_x + 10 - sliding_pos, toast.y, toast.width - 20, "left")
+			if toast.message.typeOf and toast.message:typeOf("Image") then
+				love.graphics.setColor(1, 1, 1, 1)
+				drawSizeIndependentImage(toast.message, scaled_screen_x + 10 - sliding_pos, toast.y + 20, 0, toast.width - 20, toast.height - 30)
+			else
+				love.graphics.setColor(1, 1, 1, 1)
+				love.graphics.printf(toast.message, scaled_screen_x + 10 - sliding_pos, toast.y + half_toast_height, toast.width - 20, "left")
+			end
+		end
+		if toast.time < 0 and toast.back then
+			toasts[idx] = nil
+		end
 	end
 end
+--#endregion
 
 --#region Error Handler
 local utf8 = require("utf8")
@@ -357,7 +431,7 @@ function love.draw()
 		(height - scale_factor * 480) / 2
 	)
 	love.graphics.scale(scale_factor)
-	drawScreenshotPreviews()
+	drawToasts()
 	love.graphics.setColor(1, 1, 1, 1)
 	if config.visualsettings.debug_level > 2 then
 		bottom_right_corner_y_offset = bottom_right_corner_y_offset + 113
@@ -489,7 +563,7 @@ function love.keypressed(key, scancode)
 		switchBGM(nil)
 		loadSave()
 	elseif scancode == "f3" then
-		print("The old way of framestepping is deprecated!")
+		createToast("In-game TAS controls", "The old way of framestepping (F3) is deprecated!", 260)
 	-- load state tool
 	elseif scancode == "f4" and TAS_mode and (scene.title == "Replay") then
 		scene:onInputPress({input="save_state"})
