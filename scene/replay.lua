@@ -102,6 +102,7 @@ end
 
 function ReplayScene:loadState()
 	if savestate_frames == nil then
+		createToast("Save the state first. Press F4 for that.", "Alt-F4 will close the game, so, keep that in mind.", 260)
 		print("Save the state first. Press F4 for that. Alt-F4 will close the game, so, keep that in mind.")
 		return
 	end
@@ -204,6 +205,7 @@ function ReplayScene:onInputPress(e)
 	--hardcoded input
 	elseif e.input == "save_state" then
 		savestate_frames = self.frames
+		createToast("In-game TAS", "State saved at frame "..self.frames, 260)
 		print("State saved at frame "..self.frames)
 	elseif e.input == "load_state" then
 		self:loadState()
