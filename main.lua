@@ -192,9 +192,9 @@ local function drawToasts()
 		love.graphics.setFont(font_3x5_2)
 
 		local message_lines = 0
-		if type(toast.message) == "string" then
-			---@diagnostic disable-next-line: param-type-mismatch
-			local _, wrapped_message = font_3x5_2:getWrap(toast.message, toast.width - 30)
+		local message = toast.message
+		if type(message) == "string" then
+			local _, wrapped_message = font_3x5_2:getWrap(message, toast.width - 30)
 			message_lines = #wrapped_message
 		end
 		local _, wrapped_title = font_3x5_2:getWrap(toast.title, toast.width - 30)
@@ -212,14 +212,19 @@ local function drawToasts()
 			title_offset = half_toast_height - title_lines * font_height / 2
 			message_offset = half_toast_height - message_lines * font_height / 2
 		end
+		if not message then
+			title_offset = half_toast_height - title_lines * font_height / 2
+		end
 		local text_pos_x = scaled_screen_x + 10 - sliding_pos
 		love.graphics.setColor(1, 1, 0, title_alpha)
 		love.graphics.printf(toast.title, text_pos_x, toast.y + title_offset, toast.width - 20, "left")
 		love.graphics.setColor(1, 1, 1, message_alpha)
-		if toast.message.typeOf and toast.message:typeOf("Texture") then
-			drawSizeIndependentImage(toast.message, text_pos_x, toast.y + 20, 0, toast.width - 20, toast.height - 30)
-		else
-			love.graphics.printf(toast.message, text_pos_x, toast.y + message_offset, toast.width - 20, "left")
+		if message ~= nil then
+			if message.typeOf and message:typeOf("Texture") then
+				drawSizeIndependentImage(message, text_pos_x, toast.y + 20, 0, toast.width - 20, toast.height - 30)
+			else
+				love.graphics.printf(tostring(message), text_pos_x, toast.y + message_offset, toast.width - 20, "left")
+			end
 		end
 		if toast.time < 0 and toast.back then
 			toasts[idx] = nil
