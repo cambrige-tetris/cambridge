@@ -944,6 +944,7 @@ function GameMode:drawScoringInfo()
 		love.graphics.printf("NEXT", 64, 40, 40, "left")
 	end
 
+	love.graphics.setFont(font_3x5)
 	love.graphics.print(
 		self.das.direction .. " " ..
 		self.das.frames .. " " ..

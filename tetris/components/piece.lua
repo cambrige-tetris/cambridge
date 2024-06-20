@@ -209,6 +209,10 @@ function Piece:addGravity(gravity, grid, classic_lock)
 	else
 		self.gravity = 0
 	end
+	-- a patch for infinite gravity
+	if self.gravity ~= self.gravity then
+		self.gravity = 0
+	end
 	return self
 end
 

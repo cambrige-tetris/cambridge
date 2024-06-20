@@ -78,6 +78,29 @@ function ConfigScene:new()
 	})
 end
 
+function ConfigScene:update()
+	if self.das_up or self.das_down or self.das_left or self.das_right then
+		self.das = self.das + 1
+	else
+		self.das = 0
+	end
+	if self.das >= 15 then
+		local change = 0
+		if self.das_up then
+			change = -1
+		elseif self.das_down then
+			change = 1
+		end
+		self:changeHighlight(change)
+		self.das = self.das - 4
+	end
+end
+
+function ConfigScene:changeHighlight(rel)
+	playSE("cursor")
+	self.highlight = Mod1(self.highlight+rel, optioncount)
+end
+
 function ConfigScene:render()
 	love.graphics.setColor(1, 1, 1, 1)
 	drawBackground("options_game")
@@ -132,11 +155,11 @@ function ConfigScene:onInputPress(e)
 		saveConfig()
 		scene = SettingsScene()
 	elseif e.input == "menu_up" then
-		playSE("cursor")
-		self.highlight = Mod1(self.highlight-1, optioncount)
+		self:changeHighlight(-1)
+		self.das_up = true
 	elseif e.input == "menu_down" then
-		playSE("cursor")
-		self.highlight = Mod1(self.highlight+1, optioncount)
+		self:changeHighlight(1)
+		self.das_down = true
 	elseif e.input == "menu_left" then
 		playSE("cursor_lr")
 		local option = ConfigScene.options[self.highlight]
@@ -149,6 +172,14 @@ function ConfigScene:onInputPress(e)
 		playSE("menu_cancel")
 		loadSave()
 		scene = SettingsScene()
+	end
+end
+
+function ConfigScene:onInputRelease(e)
+	if e.input == "menu_up" then
+		self.das_up = false
+	elseif e.input == "menu_down" then
+		self.das_down = false
 	end
 end
 

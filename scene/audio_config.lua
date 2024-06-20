@@ -96,8 +96,27 @@ function ConfigScene:update()
 	for i, slider in pairs(self.sliders) do
 		slider:update(x, y)
 	end
+	if self.das_up or self.das_down or self.das_left or self.das_right then
+		self.das = self.das + 1
+	else
+		self.das = 0
+	end
+	if self.das >= 15 then
+		local change = 0
+		if self.das_up then
+			change = -1
+		elseif self.das_down then
+			change = 1
+		end
+		self:changeHighlight(change)
+		self.das = self.das - 4
+	end
 end
 
+function ConfigScene:changeHighlight(rel)
+	playSE("cursor")
+	self.highlight = Mod1(self.highlight+rel, optioncount)
+end
 function ConfigScene:render()
 	love.graphics.setColor(1, 1, 1, 1)
 	drawBackground("options_game")
@@ -173,11 +192,11 @@ function ConfigScene:onInputPress(e)
 		saveConfig()
 		scene = SettingsScene()
 	elseif e.input == "menu_up" then
-		playSE("cursor")
-		self.highlight = Mod1(self.highlight-1, optioncount)
+		self:changeHighlight(-1)
+		self.das_up = true
 	elseif e.input == "menu_down" then
-		playSE("cursor")
-		self.highlight = Mod1(self.highlight+1, optioncount)
+		self:changeHighlight(1)
+		self.das_down = true
 	elseif e.input == "menu_left" then
 		self:changeValue(-option.increase_by)
 		playSE(option.sound_effect_name or "cursor_lr")
@@ -189,6 +208,14 @@ function ConfigScene:onInputPress(e)
 		loadSave()
 		love.audio.setVolume(config.master_volume)
 		scene = SettingsScene()
+	end
+end
+
+function ConfigScene:onInputRelease(e)
+	if e.input == "menu_up" then
+		self.das_up = false
+	elseif e.input == "menu_down" then
+		self.das_down = false
 	end
 end
 

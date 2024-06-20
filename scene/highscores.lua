@@ -25,6 +25,13 @@ function HighscoreScene:new()
 	self.auto_menu_offset = 0
 	self.index_count = 0
 
+	self.highscore_length = 0
+
+	self.scrollbar = newSlider(15.5, 290.5, 290, 0, 1, 0, function(value)
+			self.scrollbar_percentage = value
+			self.list_pointer = math.floor((self.highscore_length -17) * value + 0.5) + 1
+		end, { width = 20, orientation = "vertical" })
+
 	if #self.hash_table == 0 then
 		self.empty_highscores = true
 	end
@@ -37,8 +44,16 @@ function HighscoreScene:new()
 end
 
 function HighscoreScene:update()
+	local mouse_x, mouse_y = getScaledDimensions(love.mouse.getPosition())
+	if self.highscore_length > 15 then
+		local old_value = self.list_pointer
+		self.scrollbar:update(mouse_x, mouse_y)
+		if old_value ~= self.list_pointer then
+			playSE("cursor")
+		end
+	end
 	if self.auto_menu_offset ~= 0 then
-		self:changeOption(self.auto_menu_offset < 0 and -1 or 1)
+		self:scrollList(self.auto_menu_offset < 0 and -1 or 1)
 		if self.auto_menu_offset > 0 then self.auto_menu_offset = self.auto_menu_offset - 1 end
 		if self.auto_menu_offset < 0 then self.auto_menu_offset = self.auto_menu_offset + 1 end
 	end
@@ -49,16 +64,17 @@ function HighscoreScene:update()
 	end
 	if self.das >= 15 then
 		local change = 0
-		if self.das_up then
+		local horizontal = self.das_left or self.das_right
+		if self.das_up or self.das_left then
 			change = -1
-		elseif self.das_down then
+		elseif self.das_down or self.das_right then
 			change = 1
-		elseif self.das_left then
-			change = -9
-		elseif self.das_right then
-			change = 9
 		end
-		self:changeOption(change)
+		if horizontal then
+			self:changeKeyOption(change)
+		else
+			self:scrollList(change)
+		end
 		self.das = self.das - 4
 	end
 end
@@ -166,6 +182,8 @@ function HighscoreScene:selectHash()
 	self.key_references = {}
 	self.hash = self.hash_table[self.hash_id]
 	self.hash_highscore = highscores[self.hash]
+	self.highscore_length = #self.hash_highscore
+	self.scrollbar.value = 1
 	self.highscore_index, self.index_count = self.getHighscoreIndexing(self.hash)
 	self.highscore_column_widths = self.getHighscoreColumnWidths(self.hash, font_3x5_2)
 	self.highscore_column_positions = self.getHighscoreColumnPositions(self.highscore_column_widths, self.highscore_index, 100)
@@ -231,30 +249,34 @@ function HighscoreScene:render()
 
 	love.graphics.setFont(font_3x5_2)
 	if type(self.hash_highscore) == "table" then
+		if self.highscore_length > 15 then
+			self.scrollbar:draw()
+		end
+		love.graphics.setColor(1, 1, 1, 1)
 		self.menu_list_y = interpolateNumber(self.menu_list_y / 20, self.list_pointer) * 20
-		love.graphics.printf("num", 20, 100, 100)
+		love.graphics.printf("num", 30, 100, 100)
 		if #self.hash_highscore > 17 then
 			if self.list_pointer == #self.hash_highscore - 16 then
-				love.graphics.printf("^^", 5, 450, 15)
+				love.graphics.printf("^^", 10, 450, 15)
 			else
-				love.graphics.printf("v", 5, 460, 15)
+				love.graphics.printf("v", 10, 460, 15)
 			end
 			if self.list_pointer == 1 then
-				love.graphics.printf("vv", 5, 100, 15)
+				love.graphics.printf("vv", 10, 100, 15)
 			else
-				love.graphics.printf("^", 5, 110, 15)
+				love.graphics.printf("^", 10, 110, 15)
 			end
 		end
 		for name, idx in pairs(self.highscore_index) do
 			local column_x = self.highscore_column_positions[idx]
 			local column_w = self.highscore_column_widths[name]
-			local b = cursorHighlight(-25 + column_x, 100, column_w + 20, 20)
+			local b = cursorHighlight(-15 + column_x, 100, column_w + 20, 20)
 			if self.selected_key_id == idx then
 				b = 0
 			end
 			love.graphics.setColor(1, 1, b, 1)
-			drawWrappingText(name, -20 + column_x, 100, column_w, "left")
-			love.graphics.line(-25 + column_x, 100, -25 + column_x, 480)
+			drawWrappingText(name, -10 + column_x, 100, column_w, "left")
+			love.graphics.line(-15 + column_x, 100, -15 + column_x, 480)
 		end
 		for key, slot in pairs(self.hash_highscore) do
 			self.interpolated_menu_slot_positions[key] = interpolateNumber(self.interpolated_menu_slot_positions[key], self.menu_slot_positions[key])
@@ -262,20 +284,19 @@ function HighscoreScene:render()
 			if slot_y > -20 + self.menu_list_y and
 			   slot_y < 360 + self.menu_list_y then
 				local text_alpha = fadeoutAtEdges((-self.menu_list_y - 170) + slot_y, 170, 20)
+				love.graphics.setColor(1, 1, 1, text_alpha)
 				for name, value in pairs(slot) do
 					local idx = self.highscore_index[name]
-					love.graphics.setColor(1, 1, 1, text_alpha)
 					local formatted_string = toFormattedValue(value)
 					local column_x = self.highscore_column_positions[idx]
-					drawWrappingText(tostring(formatted_string), -20 + column_x, 120 + slot_y - self.menu_list_y, self.highscore_column_widths[name], "left")
+					drawWrappingText(tostring(formatted_string), -10 + column_x, 120 + slot_y - self.menu_list_y, self.highscore_column_widths[name], "left")
 				end
-				love.graphics.setColor(1, 1, 1, text_alpha)
-				love.graphics.printf(tostring(key), 20, 120 + slot_y - self.menu_list_y, 100)
+				love.graphics.printf(tostring(key), 30, 120 + slot_y - self.menu_list_y, 100)
 			end
 		end
 		love.graphics.setColor(1, 1, 1, 1)
 		if type(self.sorted_key_id) == "number" then
-			love.graphics.printf(self.key_sort_string, -30 + self.highscore_column_positions[self.sorted_key_id], 100, 90)
+			love.graphics.printf(self.key_sort_string, -20 + self.highscore_column_positions[self.sorted_key_id], 100, 90)
 		end
 	else
 		love.graphics.setColor(1, 1, 1, 0.5)
@@ -297,7 +318,10 @@ function HighscoreScene:onInputPress(e)
 		scene = TitleScene()
 	elseif e.type == "wheel" then
 		if e.y ~= 0 then
-			self:changeOption(-e.y)
+			self:scrollList(-e.y)
+		end
+		if e.x ~= 0 then
+			self:changeKeyOption(-e.x)
 		end
 	elseif e.type == "mouse" and e.button == 1 then
 		if self.hash == nil then
@@ -309,7 +333,7 @@ function HighscoreScene:onInputPress(e)
 		else
 			local old_key_id = self.sorted_key_id
 			for name, idx in pairs(self.highscore_index) do
-				if cursorHoverArea(self.highscore_column_positions[idx] - 25, 100, self.highscore_column_widths[name] + 20, 20) then
+				if cursorHoverArea(self.highscore_column_positions[idx] - 15, 100, self.highscore_column_widths[name] + 20, 20) then
 					playSE("cursor_lr")
 					self.sorted_key_id = idx
 					if self.sorted_key_id ~= old_key_id then
@@ -330,25 +354,25 @@ function HighscoreScene:onInputPress(e)
 		self.sorted_key_id = self.selected_key_id
 		self:sortByKey(self.id_to_key[self.selected_key_id])
 	elseif e.input == "menu_up" then
-		self:changeOption(-1)
+		self:scrollList(-1)
 		self.das_up = true
 		self.das_down = nil
 		self.das_left = nil
 		self.das_right = nil
 	elseif e.input == "menu_down" then
-		self:changeOption(1)
+		self:scrollList(1)
 		self.das_down = true
 		self.das_up = nil
 		self.das_left = nil
 		self.das_right = nil
 	elseif e.input == "menu_left" then
-		self:changeOption(-9)
+		self:changeKeyOption(-1)
 		self.das_left = true
 		self.das_right = nil
 		self.das_up = nil
 		self.das_down = nil
 	elseif e.input == "menu_right" then
-		self:changeOption(9)
+		self:changeKeyOption(1)
 		self.das_right = true
 		self.das_left = nil
 		self.das_up = nil
@@ -367,6 +391,7 @@ function HighscoreScene:back()
 		self.menu_slot_positions = {}
 		self.interpolated_menu_slot_positions = {}
 		self.index_count = 0
+		self.highscore_length = 0
 	else
 		scene = TitleScene()
 	end
@@ -384,19 +409,25 @@ function HighscoreScene:onInputRelease(e)
 	end
 end
 
-function HighscoreScene:changeOption(rel)
-	local len
-	local old_value
-	if math.abs(rel) == 9 and self.index_count > 0 then
-		self.sort_type = "<"
-		len = self.index_count
-		old_value = self.selected_key_id
-		self.selected_key_id = Mod1(self.selected_key_id + rel / 9, len)
-		if old_value ~= self.selected_key_id then
-			playSE("cursor")
-		end
+function HighscoreScene:changeKeyOption(rel)
+	if self.index_count <= 0 then
+		self:scrollList(rel*9)
 		return
 	end
+	local len
+	local old_value
+	self.sort_type = "<"
+	len = self.index_count
+	old_value = self.selected_key_id
+	self.selected_key_id = Mod1(self.selected_key_id + rel, len)
+	if old_value ~= self.selected_key_id then
+		playSE("cursor")
+	end
+end
+
+function HighscoreScene:scrollList(rel)
+	local len
+	local old_value
 	if self.hash_highscore == nil then
 		len = #self.hash_table
 		old_value = self.hash_id
@@ -405,13 +436,14 @@ function HighscoreScene:changeOption(rel)
 			playSE("cursor")
 		end
 	else
-		len = #self.hash_highscore
+		len = self.highscore_length
 		len = math.max(len-16, 1)
 		old_value = self.list_pointer
 		self.list_pointer = Mod1(self.list_pointer + rel, len)
 		if old_value ~= self.list_pointer then
 			playSE("cursor")
 		end
+		self.scrollbar.value = 1 - ((self.list_pointer-0.5) / len)
 	end
 end
 return HighscoreScene

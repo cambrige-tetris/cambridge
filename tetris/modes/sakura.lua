@@ -556,12 +556,14 @@ end
 function SakuraGame:drawScoringInfo()
 	love.graphics.setColor(1, 1, 1, 1)
 
-	love.graphics.setFont(font_3x5_2)
+	love.graphics.setFont(font_3x5)
 	love.graphics.print(
 		self.das.direction .. " " ..
 		self.das.frames .. " " ..
 		strTrueValues(self.prev_inputs)
 	)
+
+	love.graphics.setFont(font_3x5_2)
 	love.graphics.printf("NEXT", 64, 40, 40, "left")
 	love.graphics.printf("STAGE", 240, 120, 80, "left")
 	love.graphics.printf("TIME LIMIT", 240, 180, 80, "left")

@@ -53,7 +53,7 @@ function ModeSelectScene:new()
 	self.auto_menu_offset = 0
 	self.auto_menu_state = "mode"
 	self.start_frames, self.starting = 0, false
-	self.safety_frames = 0
+	self.safety_frames = 2
 	DiscordRPC:update({
 		details = "In menus",
 		state = "Choosing a mode",

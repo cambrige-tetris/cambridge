@@ -279,27 +279,35 @@ function cursorHoverArea(x,y,w,h)
 	return (mouse_x > x and mouse_x < x+w and mouse_y > y and mouse_y < y+h)
 end
 
----Interpolates in a smooth fashion if Smooth Scrolling option is enabled in visual settings. 
----@param input number
----@param destination number
+---@param a number
+---@param b number
+---@param t number
 ---@return number
-function interpolateNumber(input, destination, division_factor)
-	division_factor = division_factor or 4
+function math.lerp(a, b, t)
+	return a + (b - a) * t
+end
+
+---@param a number
+---@param b number
+---@param decay number
+---@param dt number
+---@return number
+function expDecay(a, b, decay, dt)
+	return b+(a-b)*math.exp(-decay*dt)
+end
+
+---Interpolates using expDecay if Smooth Scrolling option is enabled in visual settings.
+---@param a number
+---@param b number
+---@return number
+function interpolateNumber(a, b, decay, dt)
 	if config.visualsettings["smooth_scroll"] == 2 then
-		return destination
+		return b
 	end
-	if destination > input then
-		input = input + (destination - input) / division_factor
-		if input > destination - 0.02 then
-			input = destination
-		end
-	elseif destination < input then
-		input = input + (destination - input) / division_factor
-		if input < destination + 0.02 then
-			input = destination
-		end
-	end
-	return input
+	-- higher -> faster
+	decay = decay or 17.260924347109
+	dt = dt or love.timer.getDelta()
+	return expDecay(a, b, decay, dt)
 end
 
 ---note: if you input just a string here, it'll output an input. it ignores tables within input table
@@ -392,6 +400,34 @@ function stringWrapByLength(str, len)
 		return str
 	end
 	return new_str
+end
+
+function displayReplayInfoBox(replay_data)
+	local info_string = "Replay file view:\n"
+	info_string = info_string .. "Mode: " .. replay_data["mode"] .. " (" .. (replay_data["mode_hash"] or "???") .. ")\n"
+	info_string = info_string .. "Ruleset: " .. replay_data["ruleset"] .. " (" .. (replay_data["ruleset_hash"] or "???") .. ")\n"
+	info_string = info_string .. os.date("Timestamp: %c\n", replay_data["timestamp"])
+	if replay_data.cambridge_version then
+		if replay_data.cambridge_version ~= version then
+			info_string = info_string .. "Warning! The versions don't match!\nStuff may break, so, start at your own risk.\n"
+		end
+		info_string = info_string .. "Cambridge version for this replay: "..replay_data.cambridge_version.."\n"
+	end
+	if replay_data.pause_count and replay_data.pause_time then
+		info_string = info_string .. ("Pause count: %d\nTime Paused: %s\n"):format(replay_data.pause_count, formatTime(replay_data.pause_time))
+	end
+	if replay_data.sha256_table then
+		info_string = info_string .. ("SHA256 replay hashes:\nMode: %s\nRuleset: %s\n"):format(replay_data.sha256_table.mode, replay_data.sha256_table.ruleset)
+	end
+	if replay_data.highscore_data then
+		info_string = info_string .. "In-replay highscore data:\n\n"
+		for key, value in pairs(replay_data["highscore_data"]) do
+			info_string = info_string .. stringWrapByLength((key..": ".. toFormattedValue(value)), 75) .. "\n"
+		end
+	else
+		info_string = info_string .. "Legacy replay\nLevel: "..replay_data["level"]
+	end
+	love.window.showMessageBox(love.window.getTitle(), info_string, "info")
 end
 
 --alias functions

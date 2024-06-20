@@ -36,6 +36,10 @@ sound_paths = {
 	welcome = "res/se/welcomeToCambridge.wav",
 }
 
+local appended_sound_paths = {}
+
+local append_new_paths = false
+
 sounds = {}
 sounds_played = {}
 buffer_sounds = {}
@@ -46,11 +50,29 @@ for k,v in pairs(sound_paths) do
 	end
 end
 
+local function appendNewSoundPath(path, sound, subsound)
+	if sound ~= nil then
+		if subsound ~= nil then
+			appended_sound_paths[sound] = appended_sound_paths[sound] or {}
+			appended_sound_paths[sound][subsound] = path
+		else
+			appended_sound_paths[sound] = path
+		end
+	end
+end
+
+function resetAppendedSoundPaths()
+	appended_sound_paths = {}
+end
+
 -- This supports resource pack system. This shouldn't run every frame.
 ---@param path string
 ---@param sound string
 ---@param subsound any
 function loadSound(path, sound, subsound)
+	if append_new_paths then
+		appendNewSoundPath(path, sound, subsound)
+	end
 	if love.filesystem.getInfo(applied_packs_path..path) then
 		path = applied_packs_path..path
 	end
@@ -84,19 +106,28 @@ end
 -- Replace each sound effect string with its love audiosource counterpart, but only if it exists. This lets the game handle missing SFX.
 function generateSoundTable()
 	if config.sound_sources == nil then config.sound_sources = 1 end
-	-- buffer_sounds = {}
+	append_new_paths = false
+	buffer_sounds = {}
 	for k,v in pairs(sound_paths) do
 		if(type(v) == "table") then
 			-- list of subsounds
-			for k2,v2 in pairs(v) do
-				loadSound(v2, k, k2)
-			end
+			loadSoundsFromTable(k,v)
 		else
 			loadSound(v, k)
 		end
 	end
+	for k,v in pairs(appended_sound_paths) do
+		if(type(v) == "table") then
+			-- list of subsounds
+			loadSoundsFromTable(k,v)
+		else
+			loadSound(v, k)
+		end
+	end
+	append_new_paths = true
 end
 
+---@param audio_source love.Source
 local function playRawSE(audio_source)
 	if type(audio_source) == "table" then
 		error("Tried to play a table.")
@@ -108,6 +139,7 @@ local function playRawSE(audio_source)
 	audio_source:play()
 end
 
+---@param audio_source love.Source
 local function playRawSEOnce(audio_source)
 	if type(audio_source) == "table" then
 		error("Tried to play a table.")

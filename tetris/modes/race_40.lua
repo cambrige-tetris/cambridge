@@ -74,30 +74,15 @@ function Race40Game:getDasCutDelay()
 	return config.dcd
 end
 
-function Race40Game:advanceOneFrame()
-	if self.clear then
-		self.roll_frames = self.roll_frames + 1
-		if self.roll_frames > 150 then
-			self.completed = true
-		end
-		return false
-	elseif self.ready_frames == 0 then
-		self.frames = self.frames + 1
-	end
-	return true
-end
-
 function Race40Game:onPieceLock()
 	self.super:onPieceLock()
 	self.pieces = self.pieces + 1
 end
 
 function Race40Game:onLineClear(cleared_row_count)
-	if not self.clear then
-		self.lines = self.lines + cleared_row_count
-		if self.lines >= self.line_goal then
-			self.clear = true
-		end
+	self.lines = self.lines + cleared_row_count
+	if self.lines >= self.line_goal then
+		self.completed = true
 	end
 end
 

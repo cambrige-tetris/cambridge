@@ -37,7 +37,7 @@ local function inputUpdaterConditions(input_table)
 	return true
 end
 
-local function updateInputConfig()
+local function migrateInputConfig()
 	if inputUpdaterConditions(config.input.keys) then
 		local new_key_inputs = {}
 		for key, value in pairs(config.input.keys) do
@@ -80,6 +80,27 @@ local function updateInputConfig()
 				end
 			end
 		end
+	end
+end
+function inputVersioning()
+	if not config.input.version then
+		config.input.version = 1
+		local keys = config.input.keys
+		keys.menu_left = keys.menu_left or keys.left
+		keys.menu_right = keys.menu_right or keys.right
+		keys.menu_up = keys.menu_up or keys.up
+		keys.menu_down = keys.menu_down or keys.down
+	end
+	if config.input.version < 2 then
+		config.input.version = 2
+		local keys = config.input.keys
+		keys.tas_mode = "f1"
+		keys.configure_inputs = "f2"
+		keys.save_state = "f4"
+		keys.load_state = "f5"
+		keys.secret = "f8"
+		keys.fullscreen = "f11"
+		keys.screenshot = "f12"
 	end
 end
 
@@ -132,16 +153,9 @@ function initConfig()
 				config.input.joysticks = {}
 			end
 			if inputUpdaterConditions(config.input.keys) or config.input.joysticks.menu_decide ~= nil then
-				updateInputConfig()
+				migrateInputConfig()
 			end
-			if not config.input.version then
-				config.input.version = 1
-				local keys = config.input.keys
-				keys.menu_left = keys.menu_left or keys.left
-				keys.menu_right = keys.menu_right or keys.right
-				keys.menu_up = keys.menu_up or keys.up
-				keys.menu_down = keys.menu_down or keys.down
-			end
+			inputVersioning()
 		end
 		if config.current_mode then current_mode = config.current_mode end
 		if config.current_ruleset then current_ruleset = config.current_ruleset end
@@ -149,7 +163,7 @@ function initConfig()
 			current_folder_selections = config.current_folder_selections
 		end
 		scene = TitleScene()
-		--if updateInputConfig still fails
+		--if migrateInputConfig still fails
 		if inputUpdaterConditions(config.input.keys) then
 			config.input.keys = nil
 			scene = InputConfigScene()

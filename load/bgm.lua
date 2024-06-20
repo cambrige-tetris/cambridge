@@ -17,6 +17,9 @@ bgm_paths = {
 
 bgm = {}
 
+---@param path string
+---@param sound any
+---@param subsound any
 function loadBGM(path, sound, subsound)
 	if love.filesystem.getInfo(applied_packs_path..path) then
 		path = applied_packs_path..path
@@ -32,7 +35,7 @@ function loadBGM(path, sound, subsound)
 	end
 end
 
----@param sound string
+---@param sound any
 ---@param tbl table
 function loadBGMsFromTable(sound, tbl)
 	for key, value in pairs(tbl) do
@@ -44,19 +47,16 @@ function generateBGMTable()
 	for k,v in pairs(bgm_paths) do
 		if(type(v) == "table") then
 			-- list of subsounds
-			for k2,v2 in pairs(v) do
-				loadBGM(v2, k, k2)
-			end
+			loadBGMsFromTable(k, v)
 		else
-			if(love.filesystem.getInfo(v)) then
-				loadBGM(v, k)
-			end
+			loadBGM(v, k)
 		end
 	end
 end
 
-
+---@type love.Source|nil
 local current_bgm = nil
+
 local pitch = 1
 local bgm_locked = false
 
@@ -107,6 +107,7 @@ local fading_bgm = false
 local fadeout_time = 0
 local total_fadeout_time = 0
 
+---@param time number Time in seconds
 function fadeoutBGM(time)
 	if fading_bgm == false then
 		fading_bgm = true
@@ -115,21 +116,22 @@ function fadeoutBGM(time)
 	end
 end
 
-function resetBGMFadeout(time)
-	current_bgm:setVolume(config.bgm_volume)
+function resetBGMFadeout()
+	if current_bgm ~= nil then current_bgm:setVolume(config.bgm_volume) end
 	fading_bgm = false
 	resumeBGM()
 end
 
+---@param dt number Delta-time in seconds
 function processBGMFadeout(dt)
 	if current_bgm and fading_bgm then
-		fadeout_time = fadeout_time - dt
+		fadeout_time = fadeout_time - (dt * pitch)
 		if fadeout_time < 0 then
 			fadeout_time = 0
 			fading_bgm = false
 		end
 		current_bgm:setVolume(
-			fadeout_time * config.bgm_volume / total_fadeout_time
+			config.bgm_volume * (fadeout_time / total_fadeout_time)
 		)
 	end
 end
@@ -147,6 +149,7 @@ function resumeBGM()
 	end
 end
 
+---@param new_pitch number
 function pitchBGM(new_pitch)
 	pitch = new_pitch
 	if current_bgm ~= nil then

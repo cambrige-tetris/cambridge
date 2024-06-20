@@ -87,6 +87,22 @@ function TitleScene:update()
 	if self.frames < 125 then self.y_offset = self.frames
 	elseif self.frames < 185 then self.y_offset = 125
 	else self.y_offset = 310 - self.frames end
+	if self.das_up or self.das_down then
+		self.das = self.das + 1
+	else
+		self.das = 0
+	end
+	if self.das >= 15 then
+		local change = 0
+		if self.das_up then
+			change = -1
+		elseif self.das_down then
+			change = 1
+		end
+		self:changeOption(change)
+		self.das = self.das - 4
+
+	end
 end
 
 local block_offsets = {
@@ -174,6 +190,7 @@ end
 function TitleScene:changeOption(rel)
 	local len = #self.menu_screens
 	self.main_menu_state = (self.main_menu_state + len + rel - 1) % len + 1
+	playSE("cursor")
 end
 
 function TitleScene:onInputPress(e)
@@ -200,10 +217,10 @@ function TitleScene:onInputPress(e)
 		scene = self.menu_screens[self.main_menu_state]()
 	elseif e.input == "menu_up" then
 		self:changeOption(-1)
-		playSE("cursor")
+		self.das_up = true
 	elseif e.input == "menu_down" then
 		self:changeOption(1)
-		playSE("cursor")
+		self.das_down = true
 	elseif e.input == "menu_back" or e.scancode == "backspace" or e.scancode == "delete" then
 		love.event.quit()
 	else
@@ -214,6 +231,14 @@ function TitleScene:onInputPress(e)
 				largeImageKey = "snow"
 			})
 		end
+	end
+end
+
+function TitleScene:onInputRelease(e)
+	if e.input == "menu_up" then
+		self.das_up = false
+	elseif e.input == "menu_down" then
+		self.das_down = false
 	end
 end
 

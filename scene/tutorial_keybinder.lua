@@ -131,7 +131,7 @@ function KeyConfigScene:update()
 		if not self.transitioned then
 			self.transitioned = true
 			if self.input_state == 3 then
-				self.nested_scene = GameScene(require("tetris.modes.marathon_a3"), require("tetris.rulesets.standard_exp"), {})
+				self.nested_scene = GameScene(require("tetris.modes.marathon_a3"), require("tetris.rulesets.standard"), {})
 			end
 		end
 	end
@@ -194,6 +194,7 @@ function KeyConfigScene:onInputPress(e)
 			if e.scancode == "return" then
 				if not config.input then config.input = {} end
 				config.input.keys = self.new_input
+				inputVersioning()
 				saveConfig()
 				scene = TitleScene.menu_screens[1]()
 			end

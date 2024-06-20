@@ -124,7 +124,6 @@ function GameScene:onInputPress(e)
 		switchBGM(nil)
 		self.game:onExit()
 		scene = TitleScene.menu_screens[1]()
-		scene.safety_frames = 2
 	elseif e.input and string.sub(e.input, 1, 5) ~= "menu_" and e.input ~= "frame_step" then
 		self.inputs[e.input] = true
 		if config.gamesettings["diagonal_input"] == 3 and opposite_directions[e.input] then

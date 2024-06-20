@@ -424,6 +424,24 @@ function Grid:scanForSquares()
 	return table
 end
 
+function Grid:drawCellOutline(x, y, brightness, alpha)
+	love.graphics.setColor(brightness, brightness, brightness, alpha)
+	love.graphics.setLineWidth(1)
+	if y > 5 and self.grid[y-1][x] == empty or self.grid[y-1][x].colour == "X" then
+		love.graphics.line(48.0+x*16, -0.5+y*16, 64.0+x*16, -0.5+y*16)
+	end
+	if y < self.height and self.grid[y+1][x] == empty or
+	(y + 1 <= self.height and self.grid[y+1][x].colour == "X") then
+		love.graphics.line(48.0+x*16, 16.5+y*16, 64.0+x*16, 16.5+y*16)
+	end
+	if x > 1 and self.grid[y][x-1] == empty then
+		love.graphics.line(47.5+x*16, -0.0+y*16, 47.5+x*16, 16.0+y*16)
+	end
+	if x < self.width and self.grid[y][x+1] == empty then
+		love.graphics.line(64.5+x*16, -0.0+y*16, 64.5+x*16, 16.0+y*16)
+	end
+end
+
 function Grid:update()
 	for y = 1, self.height do
 		for x = 1, self.width do
@@ -453,21 +471,7 @@ function Grid:draw()
 					drawSizeIndependentImage(blocks[self.grid[y][x].skin][self.grid[y][x].colour], 48+x*16, y*16, 0, 16, 16)
 				end
 				if self.grid[y][x].skin ~= "bone" and self.grid[y][x].colour ~= "X" then
-					love.graphics.setColor(0.8, 0.8, 0.8, 1)
-					love.graphics.setLineWidth(1)
-					if y > 5 and self.grid[y-1][x] == empty or self.grid[y-1][x].colour == "X" then
-						love.graphics.line(48.0+x*16, -0.5+y*16, 64.0+x*16, -0.5+y*16)
-					end
-					if y < self.height and self.grid[y+1][x] == empty or
-					(y + 1 <= self.height and self.grid[y+1][x].colour == "X") then
-						love.graphics.line(48.0+x*16, 16.5+y*16, 64.0+x*16, 16.5+y*16)
-					end
-					if x > 1 and self.grid[y][x-1] == empty then
-						love.graphics.line(47.5+x*16, -0.0+y*16, 47.5+x*16, 16.0+y*16)
-					end
-					if x < self.width and self.grid[y][x+1] == empty then
-						love.graphics.line(64.5+x*16, -0.0+y*16, 64.5+x*16, 16.0+y*16)
-					end
+					self:drawCellOutline(x, y, 0.8, 1)
 				end
 			end
 		end
@@ -478,21 +482,7 @@ function Grid:drawOutline()
 	for y = 5, self.height do
 		for x = 1, self.width do
 			if self.grid[y][x] ~= empty and self.grid[y][x].colour ~= "X" then
-				love.graphics.setColor(0.8, 0.8, 0.8, 1)
-				love.graphics.setLineWidth(1)
-				if y > 5 and self.grid[y-1][x] == empty or self.grid[y-1][x].colour == "X" then
-					love.graphics.line(48.0+x*16, -0.5+y*16, 64.0+x*16, -0.5+y*16)
-				end
-				if y < self.height and self.grid[y+1][x] == empty or
-				(y + 1 <= self.height and self.grid[y+1][x].colour == "X") then
-					love.graphics.line(48.0+x*16, 16.5+y*16, 64.0+x*16, 16.5+y*16)
-				end
-				if x > 1 and self.grid[y][x-1] == empty then
-					love.graphics.line(47.5+x*16, -0.0+y*16, 47.5+x*16, 16.0+y*16)
-				end
-				if x < self.width and self.grid[y][x+1] == empty then
-					love.graphics.line(64.5+x*16, -0.0+y*16, 64.5+x*16, 16.0+y*16)
-				end
+				self:drawCellOutline(x, y, 0.8, 1)
 			end
 		end
 	end
@@ -520,21 +510,7 @@ function Grid:drawInvisible(opacity_function, garbage_opacity_function, lock_fla
 				drawSizeIndependentImage(blocks[self.grid[y][x].skin][self.grid[y][x].colour], 48+x*16, y*16, 0, 16, 16)
 				if lock_flash then
 					if opacity > 0 and self.grid[y][x].colour ~= "X" then
-						love.graphics.setColor(0.64, 0.64, 0.64)
-						love.graphics.setLineWidth(1)
-						if y > 5 and self.grid[y-1][x] == empty or self.grid[y-1][x].colour == "X" then
-							love.graphics.line(48.0+x*16, -0.5+y*16, 64.0+x*16, -0.5+y*16)
-						end
-						if y < self.height and self.grid[y+1][x] == empty or
-						(y + 1 <= self.height and self.grid[y+1][x].colour == "X") then
-							love.graphics.line(48.0+x*16, 16.5+y*16, 64.0+x*16, 16.5+y*16)
-						end
-						if x > 1 and self.grid[y][x-1] == empty then
-							love.graphics.line(47.5+x*16, -0.0+y*16, 47.5+x*16, 16.0+y*16)
-						end
-						if x < self.width and self.grid[y][x+1] == empty then
-							love.graphics.line(64.5+x*16, -0.0+y*16, 64.5+x*16, 16.0+y*16)
-						end
+						self:drawCellOutline(x, y, 0.64)
 					end
 				end
 			end
@@ -563,21 +539,7 @@ function Grid:drawCustom(colour_function, gamestate)
 				love.graphics.setColor(R, G, B, A)
 				drawSizeIndependentImage(blocks[self.grid[y][x].skin][self.grid[y][x].colour], 48+x*16, y*16, 0, 16, 16)
 				if outline > 0 and self.grid[y][x].colour ~= "X" then
-					love.graphics.setColor(0.64, 0.64, 0.64, outline)
-					love.graphics.setLineWidth(1)
-					if y > 5 and self.grid[y-1][x] == empty or self.grid[y-1][x].colour == "X" then
-						love.graphics.line(48.0+x*16, -0.5+y*16, 64.0+x*16, -0.5+y*16)
-					end
-					if y < self.height and self.grid[y+1][x] == empty or
-					(y + 1 <= self.height and self.grid[y+1][x].colour == "X") then
-						love.graphics.line(48.0+x*16, 16.5+y*16, 64.0+x*16, 16.5+y*16)
-					end
-					if x > 1 and self.grid[y][x-1] == empty then
-						love.graphics.line(47.5+x*16, -0.0+y*16, 47.5+x*16, 16.0+y*16)
-					end
-					if x < self.width and self.grid[y][x+1] == empty then
-						love.graphics.line(64.5+x*16, -0.0+y*16, 64.5+x*16, 16.0+y*16)
-					end
+					self:drawCellOutline(x, y, 0.64, outline)
 				end
 			end
 		end
