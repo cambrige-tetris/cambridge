@@ -212,7 +212,7 @@ local function drawToasts()
 			title_offset = half_toast_height - title_lines * font_height / 2
 			message_offset = half_toast_height - message_lines * font_height / 2
 		end
-		if not message then
+		if message == nil then
 			title_offset = half_toast_height - title_lines * font_height / 2
 		end
 		local text_pos_x = scaled_screen_x + 10 - sliding_pos
