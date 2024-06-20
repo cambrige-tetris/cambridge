@@ -170,7 +170,7 @@ function clamp(x, min, max)
 end
 
 
----@param image love.Image
+---@param image love.Texture
 ---@param origin_x integer
 ---@param origin_y integer
 ---@param draw_width integer
