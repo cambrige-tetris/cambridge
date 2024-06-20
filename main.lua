@@ -141,13 +141,13 @@ local toasts = {}
 local queued_toasts = {}
 
 function createToast(title, message, width, height)
-	local width = width or 200
-	local height = height or 40
+	width = width or 200
+	height = height or 40
 	table.insert(queued_toasts, {title = title, message = message, width = width, height = height, time = 0})
 end
 
 local function insertToastFromQueue(height_limit)
-	if #queued_toasts == 0 then return end
+	if #queued_toasts == 0 then return false end
 	local idx, result_toast = next(queued_toasts)
 	local y_pos = 0
 	local total_height = result_toast.height
@@ -160,18 +160,19 @@ local function insertToastFromQueue(height_limit)
 		end
 	end
 	if total_height > height_limit and (result_toast.height < height_limit or next(toasts)) then
-		return
+		return false
 	end
 	result_toast.y = y_pos
 	table.remove(queued_toasts, idx)
 	table.insert(toasts, result_toast)
+	return true
 end
 
 local function easeOutQuad(x)
 	return 1 - (1 - x) * (1 - x);
 end
 local function drawToasts()
-	insertToastFromQueue(280)
+	while insertToastFromQueue(280) do end
 	local scaled_screen_x, scaled_screen_y = getScaledDimensions(love.graphics.getDimensions())
 	for idx, toast in pairs(toasts) do
 		if toast.time > 300 then
@@ -185,7 +186,7 @@ local function drawToasts()
 			sliding_pos = toast.width * easeOutQuad(factor)
 		end
 		love.graphics.setColor(0.4, 0.4, 0.4)
-		love.graphics.rectangle("fill", scaled_screen_x - sliding_pos, toast.y, toast.width, toast.height)
+		love.graphics.rectangle("fill", scaled_screen_x - sliding_pos, toast.y, toast.width, toast.height, 2, 2)
 		love.graphics.setColor(0.6, 0.6, 0.6)
 		love.graphics.rectangle("line", scaled_screen_x + 2 - sliding_pos, toast.y + 2, toast.width - 4, toast.height - 4)
 		love.graphics.setFont(font_3x5_2)
@@ -215,7 +216,7 @@ local function drawToasts()
 		love.graphics.setColor(1, 1, 0, title_alpha)
 		love.graphics.printf(toast.title, text_pos_x, toast.y + title_offset, toast.width - 20, "left")
 		love.graphics.setColor(1, 1, 1, message_alpha)
-		if toast.message.typeOf and toast.message:typeOf("Image") then
+		if toast.message.typeOf and toast.message:typeOf("Texture") then
 			drawSizeIndependentImage(toast.message, text_pos_x, toast.y + 20, 0, toast.width - 20, toast.height - 30)
 		else
 			love.graphics.printf(toast.message, text_pos_x, toast.y + message_offset, toast.width - 20, "left")
