@@ -95,7 +95,7 @@ local function screenshotFunction(image)
 	local local_scale_factor = math.min(image_x / 640, image_y / 480)
 	local width = image_x / local_scale_factor / 3 + 30
 	local height = image_y / local_scale_factor / 3 + 30
-	createToast("Screenshot taken!", love.graphics.newImage(image), width, height)
+	createToast("Screenshot taken!", love.graphics.newImage(image), {width = width, height = height, message_offset = 20})
 end
 
 local last_time = 0
@@ -129,10 +129,18 @@ end
 ---@field title string
 ---@field message string|love.Image
 ---@field time number
----@field width number
----@field height number
+---@field params toast_params
 ---@field y number
----@field back boolean|nil
+---@field back boolean?
+
+---@class toast_params
+---@field width number?
+---@field height number?
+---@field title_offset number?
+---@field message_offset number?
+---@field title_color {[1]:number,[2]:number,[3]:number}?
+---@field message_color {[1]:number,[2]:number,[3]:number}?
+---@field force_sequence boolean?
 
 ---@type toast[]
 local toasts = {}
@@ -140,26 +148,52 @@ local toasts = {}
 ---@type toast[]
 local queued_toasts = {}
 
-function createToast(title, message, width, height)
-	width = width or 200
-	height = height or 40
-	table.insert(queued_toasts, {title = title, message = message, width = width, height = height, time = 0})
+---@param param_table toast_params
+function createToast(title, message, param_table)
+	param_table = param_table or {}
+	param_table.width = param_table.width or 200
+	param_table.height = param_table.height or 40
+
+	local message_lines = 0
+	if type(message) == "string" then
+		local _, wrapped_message = font_3x5_2:getWrap(message, param_table.width - 30)
+		message_lines = #wrapped_message
+	end
+	local _, wrapped_title = font_3x5_2:getWrap(title, param_table.width - 30)
+	local title_lines = #wrapped_title
+	local half_toast_height = param_table.height / 2
+	
+	local title_offset = 0
+	local message_offset = half_toast_height
+	local font_height = font_3x5_2:getHeight()
+	if font_height * (title_lines + message_lines) > param_table.height then
+		title_offset = half_toast_height - title_lines * font_height / 2
+		message_offset = half_toast_height - message_lines * font_height / 2
+	end
+	if message == nil then
+		title_offset = half_toast_height - title_lines * font_height / 2
+	end
+	param_table.title_offset = param_table.title_offset or title_offset
+	param_table.message_offset = param_table.message_offset or message_offset
+	param_table.title_color = param_table.title_color or {1, 1, 0, 1}
+	param_table.message_color = param_table.message_color or {1, 1, 1, 1}
+	table.insert(queued_toasts, {title = title, message = message, params = param_table, time = 0})
 end
 
 local function insertToastFromQueue(height_limit)
 	if #queued_toasts == 0 then return false end
 	local idx, result_toast = next(queued_toasts)
 	local y_pos = 0
-	local total_height = result_toast.height
+	local total_height = result_toast.params.height
 	for _, v in next, toasts do
-		total_height = total_height + v.height
+		total_height = total_height + v.params.height
 		for _, v2 in next, toasts do
-			if y_pos + result_toast.height > v2.y and y_pos <= v2.y + v2.height then
-				y_pos = math.max(y_pos, v2.y + v2.height)
+			if y_pos + result_toast.params.height > v2.y and y_pos <= v2.y + v2.params.height then
+				y_pos = math.max(y_pos, v2.y + v2.params.height)
 			end
 		end
 	end
-	if total_height > height_limit and (result_toast.height < height_limit or next(toasts)) then
+	if total_height > height_limit and (result_toast.params.height < height_limit or next(toasts)) then
 		return false
 	end
 	result_toast.y = y_pos
@@ -175,56 +209,50 @@ local function drawToasts()
 	while insertToastFromQueue(280) do end
 	local scaled_screen_x, scaled_screen_y = getScaledDimensions(love.graphics.getDimensions())
 	for idx, toast in pairs(toasts) do
+		local toast_width = toast.params.width
+		local toast_height = toast.params.height
 		if toast.time > 300 then
 			toast.back = true
 			toast.time = 30
 		end
 		toast.time = toast.time + (toast.back and -1 or 1)
 		local factor = math.min(30, toast.time) / 30
-		local sliding_pos = toast.width * factor * factor
+		local sliding_pos = toast_width * factor * factor
 		if toast.back == true then
-			sliding_pos = toast.width * easeOutQuad(factor)
+			sliding_pos = toast_width * easeOutQuad(factor)
 		end
 		love.graphics.setColor(0.4, 0.4, 0.4)
-		love.graphics.rectangle("fill", scaled_screen_x - sliding_pos, toast.y, toast.width, toast.height, 2, 2)
+		love.graphics.rectangle("fill", scaled_screen_x - sliding_pos, toast.y, toast_width, toast_height, 2, 2)
 		love.graphics.setColor(0.6, 0.6, 0.6)
-		love.graphics.rectangle("line", scaled_screen_x + 2 - sliding_pos, toast.y + 2, toast.width - 4, toast.height - 4)
+		love.graphics.rectangle("line", scaled_screen_x + 2 - sliding_pos, toast.y + 2, toast_width - 4, toast_height - 4)
 		love.graphics.setFont(font_3x5_2)
 
 		local message_lines = 0
 		local message = toast.message
 		if type(message) == "string" then
-			local _, wrapped_message = font_3x5_2:getWrap(message, toast.width - 30)
+			local _, wrapped_message = font_3x5_2:getWrap(message, toast_width - 30)
 			message_lines = #wrapped_message
 		end
-		local _, wrapped_title = font_3x5_2:getWrap(toast.title, toast.width - 30)
+		local _, wrapped_title = font_3x5_2:getWrap(toast.title, toast_width - 30)
 		local title_lines = #wrapped_title
-		local half_toast_height = toast.height / 2
 
 		local title_alpha = 1
 		local message_alpha = 1
-		local title_offset = 0
-		local message_offset = half_toast_height
 		local font_height = font_3x5_2:getHeight()
-		if font_height * (title_lines + message_lines) > toast.height then
+		if font_height * (title_lines + message_lines) > toast_height or toast.params.force_sequence then
 			title_alpha = toast.back and 0 or math.max(0, 4 - toast.time / 30)
 			message_alpha = toast.back and 1 or 1 - math.max(0, 5 - toast.time / 30)
-			title_offset = half_toast_height - title_lines * font_height / 2
-			message_offset = half_toast_height - message_lines * font_height / 2
 		end
-		if message == nil then
-			title_offset = half_toast_height - title_lines * font_height / 2
-		end
+		toast.params.title_color[4] = title_alpha
+		toast.params.message_color[4] = message_alpha
 		local text_pos_x = scaled_screen_x + 10 - sliding_pos
-		love.graphics.setColor(1, 1, 0, title_alpha)
-		love.graphics.printf(toast.title, text_pos_x, toast.y + title_offset, toast.width - 20, "left")
+		love.graphics.setColor(toast.params.title_color)
+		love.graphics.printf(toast.title, text_pos_x, toast.y + toast.params.title_offset, toast_width - 20, "left")
 		love.graphics.setColor(1, 1, 1, message_alpha)
-		if message ~= nil then
-			if message.typeOf and message:typeOf("Texture") then
-				drawSizeIndependentImage(message, text_pos_x, toast.y + 20, 0, toast.width - 20, toast.height - 30)
-			else
-				love.graphics.printf(tostring(message), text_pos_x, toast.y + message_offset, toast.width - 20, "left")
-			end
+		if message and message.typeOf and message:typeOf("Texture") then
+			drawSizeIndependentImage(message, text_pos_x, toast.y + toast.params.message_offset, 0, toast_width - 20, toast_height - 30)
+		elseif message then
+			love.graphics.printf(tostring(message), text_pos_x, toast.y + toast.params.message_offset, toast_width - 20, "left")
 		end
 		if toast.time < 0 and toast.back then
 			toasts[idx] = nil
@@ -441,14 +469,14 @@ function love.draw()
 		end
 	end
 	
+	drawToasts()
+
 	love.graphics.pop()
 		
 	love.graphics.setCanvas()
 	love.graphics.setColor(1,1,1,1)
 	love.graphics.draw(GLOBAL_CANVAS)
 	scaleToResolution(640, 480)
-	drawToasts()
-	love.graphics.setColor(1, 1, 1, 1)
 	if config.visualsettings.debug_level > 2 then
 		bottom_right_corner_y_offset = bottom_right_corner_y_offset + 113
 		local stats = love.graphics.getStats()
