@@ -39,6 +39,15 @@ function Grid:getCell(x, y)
 	end
 end
 
+function Grid:setCell(x, y, cell, age)
+	if x < 1 or x > self.width or y > self.height or y < 1 then
+		return false
+	end
+	self.grid[y][x] = cell or empty
+	self.grid_age[y][x] = age or 0
+	return true
+end
+
 ---@nodiscard
 function Grid:isOccupied(x, y)
 	return self:getCell(x+1, y+1) ~= empty

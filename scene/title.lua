@@ -74,6 +74,7 @@ function TitleScene:new()
 		largeImageKey = "icon2",
 		largeImageText = version
 	})
+	self.das = 0
 end
 
 function TitleScene:update()
