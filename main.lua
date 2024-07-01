@@ -95,7 +95,7 @@ local function screenshotFunction(image)
 	local local_scale_factor = math.min(image_x / 640, image_y / 480)
 	local width = image_x / local_scale_factor / 3 + 30
 	local height = image_y / local_scale_factor / 3 + 30
-	createToast("Screenshot taken!", love.graphics.newImage(image), {width = width, height = height, message_offset = 20})
+	createToast("Screenshot taken!", love.graphics.newImage(image), {width = width, height = height})
 end
 
 local last_time = 0
@@ -172,6 +172,8 @@ function createToast(title, message, param_table)
 	end
 	if message == nil then
 		title_offset = half_toast_height - title_lines * font_height / 2
+	elseif message.typeOf and message:typeOf("Texture") then
+		message_offset = title_lines * font_height
 	end
 	param_table.title_offset = param_table.title_offset or title_offset
 	param_table.message_offset = param_table.message_offset or message_offset
@@ -250,7 +252,9 @@ local function drawToasts()
 		love.graphics.printf(toast.title, text_pos_x, toast.y + toast.params.title_offset, toast_width - 20, "left")
 		love.graphics.setColor(1, 1, 1, message_alpha)
 		if message and message.typeOf and message:typeOf("Texture") then
-			drawSizeIndependentImage(message, text_pos_x, toast.y + toast.params.message_offset, 0, toast_width - 20, toast_height - 30)
+			drawSizeIndependentImage(message,
+				text_pos_x, toast.y + toast.params.message_offset, 0,
+				toast_width - 20, toast_height - toast.params.message_offset - 10)
 		elseif message then
 			love.graphics.printf(tostring(message), text_pos_x, toast.y + toast.params.message_offset, toast_width - 20, "left")
 		end
