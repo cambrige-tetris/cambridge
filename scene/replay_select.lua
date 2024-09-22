@@ -552,6 +552,7 @@ function ReplaySelectScene:verifyHighscoreData()
 		playSE("error")
 	else
 		self.highscores_data_matching = true
+		createToast("Replay highscore data verified!", "Highscore data stored in replay matches the verification!", {width = 300})
 		playSE("mode_decide")
 	end
 end

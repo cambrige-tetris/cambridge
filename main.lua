@@ -92,7 +92,11 @@ end
 ---@param image love.ImageData
 local function screenshotFunction(image)
 	playSE("screenshot")
-	screenshot_images[#screenshot_images+1] = {image = love.graphics.newImage(image), time = 0, y_position = #screenshot_images * 260}
+	local image_x, image_y = image:getDimensions()
+	local local_scale_factor = math.min(image_x / 640, image_y / 480)
+	local width = image_x / local_scale_factor / 3 + 30
+	local height = image_y / local_scale_factor / 3 + 30
+	createToast("Screenshot taken!", love.graphics.newImage(image), {width = width, height = height})
 end
 
 local last_time = 0
@@ -120,30 +124,147 @@ local function getAvgDelta()
 	return last_fps
 end
 
---What a mess trying to do something with it
-local function drawScreenshotPreviews()
-	local accumulated_y = 0
-	for idx, value in ipairs(screenshot_images) do
-		local image_x, image_y = value.image:getDimensions()
-		local local_scale_factor = math.min(image_x / 640, image_y / 480)
-		value.time = value.time + math.max(value.time < 300 and 4 or 1, value.time / 10 - 30)
-		value.y_position = interpolateNumber(value.y_position, accumulated_y)
-		local scaled_width, scaled_zero = getScaledDimensions(love.graphics.getWidth(), 0)
-		local x = (scaled_width) - ((image_x / 4) / local_scale_factor) + math.max(0, value.time - 300)
-		local rect_x, rect_y, rect_w, rect_h = x - 1, scaled_zero + value.y_position - 1, ((image_x / 4) / local_scale_factor) + 2, ((image_y / 4) / local_scale_factor) + 2
-		love.graphics.setColor(0, 0, 0)
-		love.graphics.rectangle("fill", rect_x, rect_y, rect_w, rect_h)
-		love.graphics.setColor(1, 1, 1)
-		love.graphics.draw(value.image, x, scaled_zero + value.y_position, 0, 0.25 / local_scale_factor, 0.25 / local_scale_factor)
-		love.graphics.setColor(1, 1, 1, math.max(0, 1 - (value.time / 60)))
-		love.graphics.rectangle("fill", rect_x, rect_y, rect_w, rect_h)
-		if value.time > (image_x / local_scale_factor) + 100 then
-			value.image:release()
-			table.remove(screenshot_images, idx)
+--#region Toasts
+
+---@class toast
+---@field title string
+---@field message string|love.Image
+---@field time number
+---@field params toast_params
+---@field y number
+---@field back boolean?
+
+---@class toast_params
+---@field width number?
+---@field height number?
+---@field title_offset number?
+---@field message_offset number?
+---@field title_color {[1]:number,[2]:number,[3]:number}?
+---@field message_color {[1]:number,[2]:number,[3]:number}?
+---@field force_sequence boolean?
+
+---@type toast[]
+local toasts = {}
+
+---@type toast[]
+local queued_toasts = {}
+
+---@param param_table toast_params
+function createToast(title, message, param_table)
+	param_table = param_table or {}
+	param_table.width = param_table.width or 200
+	param_table.height = param_table.height or 40
+
+	local message_lines = 0
+	if type(message) == "string" then
+		local _, wrapped_message = font_3x5_2:getWrap(message, param_table.width - 30)
+		message_lines = #wrapped_message
+	end
+	local _, wrapped_title = font_3x5_2:getWrap(title, param_table.width - 30)
+	local title_lines = #wrapped_title
+	local half_toast_height = param_table.height / 2
+	
+	local title_offset = 0
+	local message_offset = half_toast_height
+	local font_height = font_3x5_2:getHeight()
+	if font_height * (title_lines + message_lines) > param_table.height then
+		title_offset = half_toast_height - title_lines * font_height / 2
+		message_offset = half_toast_height - message_lines * font_height / 2
+	end
+	if message == nil then
+		title_offset = half_toast_height - title_lines * font_height / 2
+	elseif message.typeOf and message:typeOf("Texture") then
+		message_offset = title_lines * font_height
+	end
+	param_table.title_offset = param_table.title_offset or title_offset
+	param_table.message_offset = param_table.message_offset or message_offset
+	param_table.title_color = param_table.title_color or {1, 1, 0, 1}
+	param_table.message_color = param_table.message_color or {1, 1, 1, 1}
+	table.insert(queued_toasts, {title = title, message = message, params = param_table, time = 0})
+end
+
+local function insertToastFromQueue(height_limit)
+	if #queued_toasts == 0 then return false end
+	local idx, result_toast = next(queued_toasts)
+	local y_pos = 0
+	local total_height = result_toast.params.height
+	for _, v in next, toasts do
+		total_height = total_height + v.params.height
+		for _, v2 in next, toasts do
+			if y_pos + result_toast.params.height > v2.y and y_pos <= v2.y + v2.params.height then
+				y_pos = math.max(y_pos, v2.y + v2.params.height)
+			end
 		end
-		accumulated_y = accumulated_y + (image_y / local_scale_factor / 4) + 5
+	end
+	if total_height > height_limit and (result_toast.params.height < height_limit or next(toasts)) then
+		return false
+	end
+	result_toast.y = y_pos
+	table.remove(queued_toasts, idx)
+	table.insert(toasts, result_toast)
+	return true
+end
+
+local function easeOutQuad(x)
+	return 1 - (1 - x) * (1 - x);
+end
+local function drawToasts()
+	while insertToastFromQueue(280) do end
+	local scaled_screen_x, scaled_screen_y = getScaledDimensions(love.graphics.getDimensions())
+	for idx, toast in pairs(toasts) do
+		local toast_width = toast.params.width
+		local toast_height = toast.params.height
+		if toast.time > 300 then
+			toast.back = true
+			toast.time = 30
+		end
+		toast.time = toast.time + (toast.back and -1 or 1)
+		local factor = math.min(30, toast.time) / 30
+		local sliding_pos = toast_width * factor * factor
+		if toast.back == true then
+			sliding_pos = toast_width * easeOutQuad(factor)
+		end
+		love.graphics.setColor(0.4, 0.4, 0.4)
+		love.graphics.rectangle("fill", scaled_screen_x - sliding_pos, toast.y, toast_width, toast_height, 2, 2)
+		love.graphics.setColor(0.6, 0.6, 0.6)
+		love.graphics.rectangle("line", scaled_screen_x + 2 - sliding_pos, toast.y + 2, toast_width - 4, toast_height - 4)
+		love.graphics.setFont(font_3x5_2)
+
+		local message_lines = 0
+		local message = toast.message
+		if type(message) == "string" then
+			local _, wrapped_message = font_3x5_2:getWrap(message, toast_width - 30)
+			message_lines = #wrapped_message
+		end
+		local _, wrapped_title = font_3x5_2:getWrap(toast.title, toast_width - 30)
+		local title_lines = #wrapped_title
+
+		local title_alpha = 1
+		local message_alpha = 1
+		local font_height = font_3x5_2:getHeight()
+		if font_height * (title_lines + message_lines) > toast_height or toast.params.force_sequence then
+			title_alpha = toast.back and 0 or math.max(0, 4 - toast.time / 30)
+			message_alpha = toast.back and 1 or 1 - math.max(0, 5 - toast.time / 30)
+		end
+		toast.params.title_color[4] = title_alpha
+		toast.params.message_color[4] = message_alpha
+		local text_pos_x = scaled_screen_x + 10 - sliding_pos
+		love.graphics.setColor(toast.params.title_color)
+		love.graphics.printf(toast.title, text_pos_x, toast.y + toast.params.title_offset, toast_width - 20, "left")
+		love.graphics.setColor(1, 1, 1, message_alpha)
+		if message and message.typeOf and message:typeOf("Texture") then
+			drawSizeIndependentImage(message,
+				text_pos_x, toast.y + toast.params.message_offset, 0,
+				toast_width - 20, toast_height - toast.params.message_offset - 10)
+		elseif message then
+			love.graphics.printf(tostring(message), text_pos_x, toast.y + toast.params.message_offset, toast_width - 20, "left")
+		end
+		if toast.time < 0 and toast.back then
+			toasts[idx] = nil
+		end
 	end
 end
+--#endregion
 
 --#region Error Handler
 local utf8 = require("utf8")
@@ -353,14 +474,14 @@ function love.draw()
 		end
 	end
 	
+	drawToasts()
+
 	love.graphics.pop()
 		
 	love.graphics.setCanvas()
 	love.graphics.setColor(1,1,1,1)
 	love.graphics.draw(GLOBAL_CANVAS)
 	scaleToResolution(640, 480)
-	drawScreenshotPreviews()
-	love.graphics.setColor(1, 1, 1, 1)
 	if config.visualsettings.debug_level > 2 then
 		bottom_right_corner_y_offset = bottom_right_corner_y_offset + 113
 		local stats = love.graphics.getStats()
