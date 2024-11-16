@@ -5,3 +5,4 @@ dist/*.zip
 dist/**/cambridge.exe
 dist/**/libs
 dist/**/*.md
+dist/**/cambridge*.AppImage

@@ -23,6 +23,15 @@ function History6Rolls35PoolRandomizer:initialize()
 		Z = 0,
 		O = 0,
 	}
+	self.piece_index = {
+		"I",
+		"T",
+		"L",
+		"J",
+		"S",
+		"Z",
+		"O",
+	}
 end
 
 function History6Rolls35PoolRandomizer:generatePiece()
@@ -35,7 +44,7 @@ function History6Rolls35PoolRandomizer:generatePiece()
 		for i = 1, 6 do
 			index = love.math.random(#self.pool)
 			x = self.pool[index]
-			if not inHistory(x, self.history) or i == 6 then
+			if not self:inHistory(x) or i == 6 then
 				break
 			end
 		end
@@ -50,22 +59,22 @@ function History6Rolls35PoolRandomizer:updateHistory(shape)
 
 	local highdrought
 	local highdroughtcount = 0
-	for k, v in pairs(self.droughts) do 
-		if k == shape then
-			self.droughts[k] = 0
+	for k, v in pairs(self.piece_index) do
+		if v == shape then
+			self.droughts[v] = 0
 		else
-			self.droughts[k] = v + 1
-			if v >= highdroughtcount then
-				highdrought = k
-				highdroughtcount = v
+			self.droughts[v] = self.droughts[v] + 1
+			if self.droughts[v] >= highdroughtcount then
+				highdrought = v
+				highdroughtcount = self.droughts[v]
 			end
 		end
 	end
 	return highdrought
 end
 
-function inHistory(piece, history)
-	for idx, entry in pairs(history) do
+function History6Rolls35PoolRandomizer:inHistory(piece)
+	for idx, entry in pairs(self.history) do
 		if entry == piece then
 			return true
 		end

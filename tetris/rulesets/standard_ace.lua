@@ -24,7 +24,7 @@ SRS.MANIPULATIONS_MAX = 128
 function SRS:onPieceRotate(piece, grid, upward)
 	piece.lock_delay = 0 -- rotate reset
 	if upward or piece:isDropBlocked(grid) then
-        piece.manipulations = piece.manipulations + 1
+		piece.manipulations = piece.manipulations + 1
 		if piece.manipulations >= self.MANIPULATIONS_MAX and piece:isDropBlocked(grid) then
 			piece.locked = true
 		end

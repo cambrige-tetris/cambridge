@@ -1,0 +1,24 @@
+name: "Automatic versioning on a merge"
+on:
+  pull_request:
+    types:
+      - closed
+
+jobs:
+  if_merged:
+    if: github.event.pull_request.merged == true
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@master
+      with:
+        persist-credentials: false # otherwise, the token used is the GITHUB_TOKEN, instead of your personal token
+        fetch-depth: 0             # otherwise, you will fail to push refs to dest repo
+    - name: Automatic versioning
+      run: |
+          echo "version = \"dev-source (${GITHUB_REF#refs/heads/})\"" > load/version.lua
+    - name: Commit & Push changes
+      uses: actions-js/push@master
+      with:
+        github_token: ${{ secrets.GITHUB_TOKEN }}
+        message: "[Automated] Changed dev version to current branch name"
+        branch: ${{ github.event.pull_request.base.ref }}

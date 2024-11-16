@@ -17,6 +17,7 @@ MarathonA2Game.tagline = "The points don't matter! Can you reach the invisible r
 function MarathonA2Game:new()
 	MarathonA2Game.super:new()
 
+	setTargetFPS(61.68)
 	self.roll_frames = 0
 	self.combo = 1
 	self.grade_combo = 1
@@ -28,7 +29,7 @@ function MarathonA2Game:new()
 	self.section_times = { [0] = 0 }
 	self.section_tetrises = { [0] = 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 }
 	self.tetris_count = 0
-	
+
 	self.SGnames = {
 		"9", "8", "7", "6", "5", "4", "3", "2", "1",
 		"S1", "S2", "S3", "S4", "S5", "S6", "S7", "S8", "S9",
@@ -40,6 +41,10 @@ function MarathonA2Game:new()
 	self.lock_hard_drop = false
 	self.enable_hold = false
 	self.next_queue_length = 1
+end
+
+function MarathonA2Game:onExit()
+	setTargetFPS(60)
 end
 
 function MarathonA2Game:getARE()
@@ -176,7 +181,7 @@ function MarathonA2Game:updateSectionTimes(old_level, new_level)
 	if math.floor(old_level / 100) < math.floor(new_level / 100) or
 	new_level >= 999 then
 		-- record new section
-		section_time = self.frames - self.section_start_time
+		local section_time = self.frames - self.section_start_time
 		self.section_times[math.floor(old_level / 100)] = section_time
 		self.section_start_time = self.frames
 		self.section_tetrises[math.floor(old_level / 100)] = self.tetris_count
@@ -224,7 +229,7 @@ local grade_point_decays = {
 	40, 40, 40, 40, 40, 30, 30, 30,
 	20, 20, 20, 20, 20,
 	15, 15, 15, 15, 15, 15, 15, 15, 15, 15,
-	10, 10
+	10, 10, 10
 }
 
 local combo_multipliers = {
@@ -342,7 +347,7 @@ function MarathonA2Game:drawGrid()
 	else
 		self.grid:draw()
 		if self.piece ~= nil and self.level < 100 then
-			self:drawGhostPiece(ruleset)
+			self:drawGhostPiece()
 		end
 	end
 end
@@ -350,18 +355,20 @@ end
 function MarathonA2Game:drawScoringInfo()
 	love.graphics.setColor(1, 1, 1, 1)
 
-	love.graphics.setFont(font_3x5_2)
+	love.graphics.setFont(font_3x5)
 	love.graphics.print(
 		self.das.direction .. " " ..
 		self.das.frames .. " " ..
 		strTrueValues(self.prev_inputs)
 	)
+
+	love.graphics.setFont(font_3x5_2)
 	love.graphics.printf("NEXT", 64, 40, 40, "left")
 	love.graphics.printf("GRADE", 240, 120, 40, "left")
 	love.graphics.printf("SCORE", 240, 200, 40, "left")
 	love.graphics.printf("LEVEL", 240, 320, 40, "left")
 	local sg = self.grid:checkSecretGrade()
-	if sg >= 5 then 
+	if sg >= 5 then
 		love.graphics.printf("SECRET GRADE", 240, 430, 180, "left")
 	end
 
@@ -374,7 +381,7 @@ function MarathonA2Game:drawScoringInfo()
 			if self.roll_frames > 3701 then love.graphics.setColor(1, 0.5, 0, 1)
 			else love.graphics.setColor(0, 1, 0, 1) end
 		end
-	end	
+	end
 	love.graphics.printf(self:getLetterGrade(), 240, 140, 90, "left")
 	love.graphics.setColor(1, 1, 1, 1)
 	love.graphics.printf(self.score, 240, 220, 90, "left")

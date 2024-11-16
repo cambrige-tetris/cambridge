@@ -28,7 +28,7 @@ Backgrounds
 16. *Gameplay level 15: [original URL not found.]
 17. Gameplay level 16: "Galileo Donato." H. J. Detouche. https://commons.wikimedia.org/wiki/File:Galileo_Donato.jpg
 18. Gameplay level 17: "The Death of General Mercer at the Battle of Princeton, January 3, 1777." John Trumbull. https://commons.wikimedia.org/wiki/File:The_Death_of_General_Mercer_at_the_Battle_of_Princeton_January_3_1777.jpeg
-19. Gameplay level 18: "Царскосельская железная дорога". Unknown. https://commons.wikimedia.org/wiki/File:%D0%A6%D0%B0%D1%80%D1%81%D0%BA%D0%BE%D1%81%D0%B5%D0%BB%D1%8C%D1%81%D0%BA%D0%B0%D1%8F_%D0%B6%D0%B5%D0%BB%D0%B5%D0%B7%D0%BD%D0%B0%D1%8F_%D0%B4%D0%BE%D1%80%D0%BE%D0%B3%D0%B0.jpg
+19. Gameplay level 18: "Царскосельская железная дорога". Unknown. https://commons.wikimedia.org/wiki/File:The_Ceremonial_Opening_of_the_Tzarskoye_Selo_Railway.jpg
 20. *Gameplay level 19: [original URL not found.]
 
 Backgrounds marked with a * are placeholders that will be replaced in later versions due to incompatible licenses. We are generally aiming for public domain background images, but will also accept backgrounds given proper licenses to be included within Cambridge.
@@ -91,6 +91,32 @@ the Software without restriction, including without limitation the rights to
 use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies
 of the Software, and to permit persons to whom the Software is furnished to do
 so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+
+sha2 (https://github.com/Egor-Skriptunoff/pure_lua_SHA)
+------------------------
+
+MIT License
+
+Copyright (c) 2018-2022  Egor Skriptunoff
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
 
 The above copyright notice and this permission notice shall be included in all
 copies or substantial portions of the Software.

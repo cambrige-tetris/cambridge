@@ -15,7 +15,7 @@ function History6RollsRandomizer:generatePiece()
 		local shapes = {"I", "J", "L", "O", "S", "T", "Z"}
 		for i = 1, 6 do
 			local x = love.math.random(7)
-			if not inHistory(shapes[x], self.history) or i == 6 then
+			if not self:inHistory(shapes[x]) or i == 6 then
 				return self:updateHistory(shapes[x])
 			end
 		end
@@ -28,8 +28,8 @@ function History6RollsRandomizer:updateHistory(shape)
 	return shape
 end
 
-function inHistory(piece, history)
-	for idx, entry in pairs(history) do
+function History6RollsRandomizer:inHistory(piece)
+	for idx, entry in pairs(self.history) do
 		if entry == piece then
 			return true
 		end

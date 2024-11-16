@@ -4,6 +4,7 @@ require 'load.save'
 ExitScene.title = "Exit Game"
 
 function ExitScene:new()
+	love.event.quit()
 end
 
 function ExitScene:update()

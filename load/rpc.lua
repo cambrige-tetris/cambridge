@@ -2,6 +2,7 @@ print("Loading discord RPC...")
 DiscordRPC = {
 	loaded = false
 }
+local now = 0
 local success, RPC = pcall(require, "libs.discordRPC")
 if success then
 	DiscordRPC.loaded = true
@@ -33,8 +34,8 @@ if success then
 	end
 
 	RPC.initialize(DiscordRPC.appId, true)
-	local now = os.time(os.date("*t"))
-	
+	now = os.time(os.date("*t"))
+
 	DiscordRPC.RPC = RPC
 	print("DiscordRPC successfully loaded.")
 else

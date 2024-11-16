@@ -16,6 +16,7 @@ SurvivalA2Game.tagline = "The game starts fast and only gets faster!"
 
 function SurvivalA2Game:new()
 	SurvivalA2Game.super:new()
+	setTargetFPS(61.68)
 	self.roll_frames = 0
 	self.combo = 1
 	self.randomizer = History6RollsRandomizer()
@@ -28,6 +29,10 @@ function SurvivalA2Game:new()
 
 	self.lock_drop = true
 	self.lock_hard_drop = true
+end
+
+function SurvivalA2Game:onExit()
+	setTargetFPS(60)
 end
 
 function SurvivalA2Game:getARE()
@@ -126,8 +131,8 @@ end
 
 function SurvivalA2Game:getLetterGrade()
 		if self.level >= 999 then return "GM"
-	elseif self.level >  500 then return "M" 
-	elseif self.level == 500 and not self.clear then return "M" 
+	elseif self.level >  500 then return "M"
+	elseif self.level == 500 and not self.clear then return "M"
 	else return "" end
 end
 
@@ -140,19 +145,21 @@ function SurvivalA2Game:drawScoringInfo()
 	love.graphics.setColor(1, 1, 1, 1)
 
 	local text_x = config["side_next"] and 320 or 240
-	
-	love.graphics.setFont(font_3x5_2)
+
+	love.graphics.setFont(font_3x5)
 	love.graphics.print(
 		self.das.direction .. " " ..
 		self.das.frames .. " " ..
 		strTrueValues(self.prev_inputs)
 	)
+	
+	love.graphics.setFont(font_3x5_2)
 	love.graphics.printf("NEXT", 64, 40, 40, "left")
 	if self:getLetterGrade() ~= "" then love.graphics.printf("GRADE", text_x, 120, 40, "left") end
 	love.graphics.printf("SCORE", text_x, 200, 40, "left")
 	love.graphics.printf("LEVEL", text_x, 320, 40, "left")
 	local sg = self.grid:checkSecretGrade()
-	if sg >= 5 then 
+	if sg >= 5 then
 		love.graphics.printf("SECRET GRADE", 240, 430, 180, "left")
 	end
 

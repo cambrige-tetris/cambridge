@@ -18,7 +18,7 @@ You do not need LÖVE on Windows, as it comes bundled with the program.
 
 #### Stable release
 
-To get the stable release, simply download either `cambridge-win32.zip` (32-bit) or `cambridge-windows.zip` (64-bit) in the [latest release](https://github.com/cambridge-stacker/cambridge/releases/latest).
+To get the stable release, simply download either `cambridge_windows_x86.zip` (32-bit, x86) or `cambridge_windows_x64.zip` (64-bit, x86-64) in the [latest release](https://github.com/cambridge-stacker/cambridge/releases/latest).
 
 All assets needed are bundled with the executable.
 
@@ -34,13 +34,11 @@ If that doesn't work, run this instead, still using Command Prompt where you ext
 
 	dist\win32\love.exe .
 
-32-bit systems do not support rich presence integration.
-
 Then, check the mod pack section at the bottom of this page.
 
 ### macOS, Linux
 
-If you haven't already, install `love` with your favourite package manager (Homebrew on macOS, your system's default on Linux). **Make sure you're using LÖVE 11.3, because it won't work with earlier or later versions!**
+If you haven't already, install `love` with your favourite package manager (Homebrew on macOS, your system's default on Linux). **Make sure you're not using LÖVE 11.4, because it's been proven to randomly freeze Cambridge!**
 
 #### Downloading a release
 
@@ -80,7 +78,7 @@ listed in the file SOURCES.
 Credits
 -------
   
-- [Milla Basset](https://github.com/MillaBasset) for reviving the project and maintaining it from 2020 to 2024
+- [Milla Basset](https://github.com/MillaBasset) for reviving the project and maintaining it from 2020 to 2024!
 - [Lilla Oshisaure](https://www.youtube.com/user/LeSpyroshisaure) for development support and help!
 - [joezeng](https://github.com/joezeng) for the original project, and for offering to help with the expansion!
 - [The Tetra Legends Discord](http://discord.com/invite/7hMx5r2) for support and playtesting!

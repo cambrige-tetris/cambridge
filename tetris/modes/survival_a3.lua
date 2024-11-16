@@ -21,13 +21,13 @@ function SurvivalA3Game:new()
 	self.roll_frames = 0
 	self.combo = 1
 	self.randomizer = History6RollsRandomizer()
-	
+
 	self.SGnames = {
 		"S1", "S2", "S3", "S4", "S5", "S6", "S7", "S8", "S9",
 		"M1", "M2", "M3", "M4", "M5", "M6", "M7", "M8", "M9",
 		"GM"
 	}
-	
+
 	self.lock_drop = true
 	self.lock_hard_drop = true
 	self.enable_hold = true
@@ -177,7 +177,7 @@ end
 function SurvivalA3Game:updateSectionTimes(old_level, new_level)
 	if math.floor(old_level / 100) < math.floor(new_level / 100) then
 		local section = math.floor(old_level / 100) + 1
-		section_time = self.frames - self.section_start_time
+		local section_time = self.frames - self.section_start_time
 		table.insert(self.section_times, section_time)
 		self.section_start_time = self.frames
 		if section_time <= frameTime(1,00) then
@@ -223,10 +223,10 @@ function SurvivalA3Game:drawScoringInfo()
 	love.graphics.printf("SCORE", text_x, 200, 40, "left")
 	love.graphics.printf("LEVEL", text_x, 320, 40, "left")
 	local sg = self.grid:checkSecretGrade()
-	if sg >= 5 then 
+	if sg >= 5 then
 		love.graphics.printf("SECRET GRADE", 240, 430, 180, "left")
 	end
-	
+
 	if(self.coolregret_timer > 0) then
 		love.graphics.printf(self.coolregret_message, 64, 400, 160, "center")
 		self.coolregret_timer = self.coolregret_timer - 1

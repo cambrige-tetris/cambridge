@@ -1,62 +1,70 @@
-named_backgrounds = {
-	"title", "title_no_icon", "title_night",
-	"snow", "options_input", "options_game"
+local image_formats = {"png", "jpg", "bmp", "tga"}
+
+---Putting file format at the end isn't required. Also it supports resource pack system.
+---@param path string
+---@return love.Image
+function loadImage(path)
+	local is_packs_present = #config.resource_packs_applied > 0
+	for _, v in pairs(image_formats) do
+		local local_path = path.."."..v
+		if love.filesystem.getInfo(local_path) then
+			path = local_path
+			if not is_packs_present then break end
+		end
+		if love.filesystem.getInfo(applied_packs_path..local_path) then
+			path = applied_packs_path..local_path
+			break
+		end
+	end
+	if love.filesystem.getInfo(path) then
+		-- this file exists
+		return love.graphics.newImage(path)
+	end
+	error(("Image (%s) not found!"):format(path))
+end
+
+function loadImageTable(image_table, path_table)
+	for k,v in pairs(path_table) do
+		if type(v) == "table" then
+			image_table[k] = {}
+			-- list of subimages
+			for k2,v2 in pairs(v) do
+				image_table[k][k2] = loadImage(v2)
+			end
+		else
+			image_table[k] = loadImage(v)
+		end
+	end
+end
+
+---@param image love.Texture
+---@param origin_x integer
+---@param origin_y integer
+---@param draw_width integer
+---@param draw_height integer
+function drawSizeIndependentImage(image, origin_x, origin_y, r, draw_width, draw_height, offset_x, offset_y, ...)
+	offset_x = offset_x or 0
+	offset_y = offset_y or 0
+	local width, height = image:getDimensions()
+	local width_scale_factor = width / draw_width
+	local height_scale_factor = height / draw_height
+	love.graphics.draw(image, origin_x, origin_y, r, 1/width_scale_factor, 1/height_scale_factor, offset_x*width_scale_factor, offset_y*height_scale_factor, ...)
+end
+
+--- this exists for less unnecessary typing
+drawImage = drawSizeIndependentImage
+
+backgrounds = {}
+backgrounds_paths = {
+	title = "res/backgrounds/title",
+	title_no_icon = "res/backgrounds/title-no-icon",
+	title_night = "res/backgrounds/title-night",
+	snow = "res/backgrounds/snow",
+	options_input = "res/backgrounds/options-input",
+	options_game = "res/backgrounds/options-game",
 }
 current_playing_bgs = {}
 extended_bgs = {}
-image_formats = {".jpg", ".png"}
-bgpath = "res/backgrounds/"
-dir = love.filesystem.getDirectoryItems(bgpath)
-
-backgrounds = {}
-
-local function loadExtendedBgs()
-	extended_bgs = require("res.backgrounds.extend_section_bg")
-end
-
--- error handling for if there is no extend_section_bg
-if pcall(loadExtendedBgs) then end
-
--- helper method to populate backgrounds
-local function createBackgroundIfExists(name, file_name)
-	local format_index = 1
-
-	-- see if background is an extension of another background
-	if extended_bgs[file_name] ~= nil then
-		copy_bg = extended_bgs[file_name]
-		copy_bg = copy_bg / 100
-		backgrounds[name] = backgrounds[copy_bg]
-		return true
-	end
-
-	-- try creating image backgrounds
-	while format_index <= #image_formats do
-		for num, existing_file in pairs(dir) do
-			if existing_file == (file_name..image_formats[format_index]) then
-				local tempBgPath = bgpath .. file_name .. image_formats[format_index]
-				backgrounds[name] = love.graphics.newImage(tempBgPath)
-				return true
-			end
-		end
-		format_index = format_index + 1
-	end
-
-	-- try creating video background
-	if love.filesystem.getInfo(bgpath .. file_name .. ".ogv") then
-		for num, existing_file in pairs(dir) do
-			if existing_file == (file_name..".ogv") then
-				local tempBgPath = bgpath .. file_name .. ".ogv"
-				backgrounds[name] = love.graphics.newVideo(
-					tempBgPath, {["audio"] = false}
-				)
-				-- you can set audio to true, but the video will not loop
-				-- properly if audio extends beyond video frames
-				return true
-			end
-		end
-	end
-	return false
-end
 
 local function stopOtherBgs(bg)
 	if #current_playing_bgs == 0 and bg:typeOf("Video") then
@@ -74,7 +82,7 @@ local function stopOtherBgs(bg)
 end
 
 function fetchBackgroundAndLoop(id)
-	bg = backgrounds[id]
+	local bg = backgrounds[id]
 
 	if bg:typeOf("Video") and not bg:isPlaying() then
 		bg:rewind()
@@ -86,22 +94,6 @@ function fetchBackgroundAndLoop(id)
 	return bg
 end
 
--- create section backgrounds
-local section = 0
-while (createBackgroundIfExists(section, section*100)) do
-	section = section + 1
-end
-
--- create named backgrounds
-local nbgIndex = 1
-while nbgIndex <= #named_backgrounds do
-	createBackgroundIfExists(
-		named_backgrounds[nbgIndex],
-		string.gsub(named_backgrounds[nbgIndex], "_", "-")
-	)
-	nbgIndex = nbgIndex + 1
-end
-
 -- in order, the colors are:
 -- red, orange, yellow, green, cyan, blue
 -- magenta (or purple), white, black
@@ -111,54 +103,55 @@ end
 -- X is an invisible "block"
 -- don't use these for piece colors when making a ruleset
 -- all the others are fine to use
-blocks = {
+blocks = {}
+blocks_paths = {
 	["2tie"] = {
-		R = love.graphics.newImage("res/img/s1.png"),
-		O = love.graphics.newImage("res/img/s3.png"),
-		Y = love.graphics.newImage("res/img/s7.png"),
-		G = love.graphics.newImage("res/img/s6.png"),
-		C = love.graphics.newImage("res/img/s2.png"),
-		B = love.graphics.newImage("res/img/s4.png"),
-		M = love.graphics.newImage("res/img/s5.png"),
-		W = love.graphics.newImage("res/img/s9.png"),
-		D = love.graphics.newImage("res/img/s8.png"),
-		F = love.graphics.newImage("res/img/s9.png"),
-		A = love.graphics.newImage("res/img/s8.png"),
-		X = love.graphics.newImage("res/img/s9.png"),
+		R = "res/img/s1",
+		O = "res/img/s3",
+		Y = "res/img/s7",
+		G = "res/img/s6",
+		C = "res/img/s2",
+		B = "res/img/s4",
+		M = "res/img/s5",
+		W = "res/img/s9",
+		D = "res/img/s8",
+		F = "res/img/s9",
+		A = "res/img/s8",
+		X = "res/img/s9",
 	},
 	["bone"] = {
-		R = love.graphics.newImage("res/img/bone.png"),
-		O = love.graphics.newImage("res/img/bone.png"),
-		Y = love.graphics.newImage("res/img/bone.png"),
-		G = love.graphics.newImage("res/img/bone.png"),
-		C = love.graphics.newImage("res/img/bone.png"),
-		B = love.graphics.newImage("res/img/bone.png"),
-		M = love.graphics.newImage("res/img/bone.png"),
-		W = love.graphics.newImage("res/img/bone.png"),
-		D = love.graphics.newImage("res/img/bone.png"),
-		F = love.graphics.newImage("res/img/bone.png"),
-		A = love.graphics.newImage("res/img/bone.png"),
-		X = love.graphics.newImage("res/img/bone.png"),
+		R = "res/img/bone",
+		O = "res/img/bone",
+		Y = "res/img/bone",
+		G = "res/img/bone",
+		C = "res/img/bone",
+		B = "res/img/bone",
+		M = "res/img/bone",
+		W = "res/img/bone",
+		D = "res/img/bone",
+		F = "res/img/bone",
+		A = "res/img/bone",
+		X = "res/img/bone",
 	},
 	["gem"] = {
-		R = love.graphics.newImage("res/img/gem1.png"),
-		O = love.graphics.newImage("res/img/gem3.png"),
-		Y = love.graphics.newImage("res/img/gem7.png"),
-		G = love.graphics.newImage("res/img/gem6.png"),
-		C = love.graphics.newImage("res/img/gem2.png"),
-		B = love.graphics.newImage("res/img/gem4.png"),
-		M = love.graphics.newImage("res/img/gem5.png"),
-		W = love.graphics.newImage("res/img/gem9.png"),
-		D = love.graphics.newImage("res/img/gem9.png"),
-		F = love.graphics.newImage("res/img/gem9.png"),
-		A = love.graphics.newImage("res/img/gem9.png"),
-		X = love.graphics.newImage("res/img/gem9.png"),
+		R = "res/img/gem1",
+		O = "res/img/gem3",
+		Y = "res/img/gem7",
+		G = "res/img/gem6",
+		C = "res/img/gem2",
+		B = "res/img/gem4",
+		M = "res/img/gem5",
+		W = "res/img/gem9",
+		D = "res/img/gem9",
+		F = "res/img/gem9",
+		A = "res/img/gem9",
+		X = "res/img/gem9",
 	},
 	["square"] = {
-		W = love.graphics.newImage("res/img/squares.png"),
-		Y = love.graphics.newImage("res/img/squareg.png"),
-		F = love.graphics.newImage("res/img/squares.png"),
-		X = love.graphics.newImage("res/img/squares.png"),
+		W = "res/img/squares",
+		Y = "res/img/squareg",
+		F = "res/img/squares",
+		X = "res/img/squares",
 	}
 }
 
@@ -189,25 +182,27 @@ for name, blockset in pairs(blocks) do
 	end
 end
 
-misc_graphics = {
-	frame = love.graphics.newImage("res/img/frame.png"),
-	ready = love.graphics.newImage("res/img/ready.png"),
-	go = love.graphics.newImage("res/img/go.png"),
-	select_mode = love.graphics.newImage("res/img/select_mode.png"),
-	strike = love.graphics.newImage("res/img/strike.png"),
-	santa = love.graphics.newImage("res/img/santa.png"),
-	icon = love.graphics.newImage("res/img/cambridge_transparent.png")
+misc_graphics = {}
+misc_graphics_paths = {
+	frame = "res/img/frame",
+	ready = "res/img/ready",
+	go = "res/img/go",
+	select_mode = "res/img/select_mode",
+	strike = "res/img/strike",
+	santa = "res/img/santa",
+	icon = "res/img/cambridge_transparent"
 }
 
--- utility function to allow any size background to be used
--- this will stretch the background to 4:3 aspect ratio
+-- Utility function to allow any size background to be used.
+-- This will stretch the background to either 4:3, or screen's aspect ratio.
 function drawBackground(id)
 	local bg_object = fetchBackgroundAndLoop(id)
-	local width = bg_object:getWidth()
-	local height = bg_object:getHeight()
-	love.graphics.draw(
-		bg_object,
-		0, 0, 0,
-		640 / width, 480 / height
-	)
+	local x, y, w, h = 0, 0, 640, 480
+	if config.visualsettings.stretch_background == 2 then
+		x, y = love.graphics.inverseTransformPoint(0, 0)
+		local window_width, window_height = love.graphics.getDimensions()
+		local scale_factor = math.min(window_width / 640, window_height / 480)
+		w, h = window_width / scale_factor, window_height / scale_factor
+	end
+	drawSizeIndependentImage(bg_object, x, y, 0, w, h)
 end

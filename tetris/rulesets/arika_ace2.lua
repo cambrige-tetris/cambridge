@@ -23,7 +23,7 @@ function ARS:attemptWallkicks(piece, new_piece, rot_dir, grid)
 		for index, offset in pairs(offsets) do
 			if grid:isOccupied(piece.position.x + offset.x, piece.position.y + offset.y) then
 				if offset.x == 0 then
-					return 
+					return
 				else
 					break
 				end
@@ -33,7 +33,7 @@ function ARS:attemptWallkicks(piece, new_piece, rot_dir, grid)
 
 	if piece.shape == "I" then
 		-- special kick rules for I
-		if (new_piece.rotation == 0 or new_piece.rotation == 2) and 
+		if (new_piece.rotation == 0 or new_piece.rotation == 2) and
 		(piece:isMoveBlocked(grid, {x=-1, y=0}) or piece:isMoveBlocked(grid, {x=1, y=0})) then
 			-- kick right, right2, left
 			if grid:canPlacePiece(new_piece:withOffset({x=1, y=0})) then

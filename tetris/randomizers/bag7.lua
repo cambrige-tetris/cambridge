@@ -10,7 +10,7 @@ function Bag7Randomizer:generatePiece()
 	if next(self.bag) == nil then
 		self.bag = {"I", "J", "L", "O", "S", "T", "Z"}
 	end
-	local x = love.math.random(table.getn(self.bag))
+	local x = love.math.random(#self.bag)
 	return table.remove(self.bag, x)
 end
 

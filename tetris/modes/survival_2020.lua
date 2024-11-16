@@ -44,7 +44,7 @@ end
 function Survival2020Game:getLineARE()
 	return self:getARE()
 end
- 
+
 function Survival2020Game:getDasLimit()
 		if self.level < 200 then return 9
 	elseif self.level < 500 then return 7
@@ -188,7 +188,7 @@ end
 function Survival2020Game:updateSectionTimes(old_level, new_level)
 	if math.floor(old_level / 100) < math.floor(new_level / 100) then
 		local section = math.floor(old_level / 100) + 1
-		section_time = self.frames - self.section_start_time
+		local section_time = self.frames - self.section_start_time
 		table.insert(self.section_times, section_time)
 		self.section_start_time = self.frames
 		if section_time <= frameTime(0,30) then
@@ -222,6 +222,14 @@ local function getLetterGrade(grade)
 	end
 end
 
+function Survival2020Game:getEndOfSectionForSection(section)
+	if section == 21 then
+		return 2020
+	else
+		return section * 100
+	end
+end
+
 function Survival2020Game:drawScoringInfo()
 	Survival2020Game.super.drawScoringInfo(self)
 
@@ -244,7 +252,7 @@ function Survival2020Game:drawScoringInfo()
 	if self.clear then
 		love.graphics.printf(self.level, text_x, 370, 50, "right")
 	else
-		love.graphics.printf(math.floor(self.level / 100 + 1) * 100, text_x, 370, 50, "right")
+		love.graphics.printf(self:getEndOfSectionForSection(current_section), text_x, 370, 50, "right")
 	end
 end
 

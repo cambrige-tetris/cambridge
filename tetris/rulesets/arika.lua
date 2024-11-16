@@ -87,7 +87,7 @@ function ARS:attemptWallkicks(piece, new_piece, rot_dir, grid)
 		for index, offset in pairs(offsets) do
 			if grid:isOccupied(piece.position.x + offset.x, piece.position.y + offset.y) then
 				if offset.x == 0 then
-					return 
+					return
 				else
 					break
 				end

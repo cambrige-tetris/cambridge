@@ -29,7 +29,7 @@ function Race40Game:new()
 			"GM"
    	}
 	self.upstacked = false
-	
+
 	self.lock_drop = true
 	self.lock_hard_drop = true
 	self.instant_hard_drop = true
@@ -74,30 +74,15 @@ function Race40Game:getDasCutDelay()
 	return config.dcd
 end
 
-function Race40Game:advanceOneFrame()
-	if self.clear then
-		self.roll_frames = self.roll_frames + 1
-		if self.roll_frames > 150 then
-			self.completed = true
-		end
-		return false
-	elseif self.ready_frames == 0 then
-		self.frames = self.frames + 1
-	end
-	return true
-end
-
 function Race40Game:onPieceLock()
 	self.super:onPieceLock()
 	self.pieces = self.pieces + 1
 end
 
 function Race40Game:onLineClear(cleared_row_count)
-	if not self.clear then
-		self.lines = self.lines + cleared_row_count
-		if self.lines >= self.line_goal then
-			self.clear = true
-		end
+	self.lines = self.lines + cleared_row_count
+	if self.lines >= self.line_goal then
+		self.completed = true
 	end
 end
 
@@ -106,11 +91,16 @@ function Race40Game:drawGrid(ruleset)
 	if self.piece ~= nil then
 		self:drawGhostPiece(ruleset)
 	end
+	if self.lines >= self.line_goal - 20 and self.lines < self.line_goal then
+		local line_height = (self.lines - self.line_goal + 20) * 16 + 80
+		love.graphics.setColor(1, 0, 0, 1)
+		love.graphics.line(64, line_height, 224, line_height)
+	end
 end
 
 function Race40Game:getHighscoreData()
 	return {
-		level = self.level,
+		lines = self.lines,
 		frames = self.frames,
 	}
 end
@@ -126,14 +116,14 @@ function Race40Game:drawScoringInfo()
 	love.graphics.setColor(1, 1, 1, 1)
 
 	local text_x = config["side_next"] and 320 or 240
-	
+
 	love.graphics.setFont(font_3x5_2)
 	love.graphics.printf("NEXT", 64, 40, 40, "left")
 	love.graphics.printf("LINES", text_x, 320, 40, "left")
 	love.graphics.printf("line/min", text_x, 160, 80, "left")
 	love.graphics.printf("piece/sec", text_x, 220, 80, "left")
 	local sg = self.grid:checkSecretGrade()
-		if sg >= 7 or self.upstacked then 
+		if sg >= 7 or self.upstacked then
 			love.graphics.printf("SECRET GRADE", 240, 430, 180, "left")
 		end
 

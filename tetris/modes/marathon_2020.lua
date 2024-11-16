@@ -329,7 +329,7 @@ function Marathon2020Game:checkClear(level)
 end
 
 function Marathon2020Game:updateSectionTimes(old_level, new_level)
-	function sectionCool(section)
+	local function sectionCool(section)
 		self.section_cool_count = self.section_cool_count + 1
 		if section <= 10 then
 			self.delay_level = math.min(20, self.delay_level + 1)
@@ -420,7 +420,7 @@ function Marathon2020Game:drawGrid()
 	else
 		self.grid:draw()
 		if self.piece ~= nil and self.level < 100 then
-			self:drawGhostPiece(ruleset)
+			self:drawGhostPiece()
 		end
 	end
 end

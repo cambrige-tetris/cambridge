@@ -16,12 +16,15 @@ GameMode.hash = ""
 GameMode.tagline = ""
 GameMode.rollOpacityFunction = function(age) return 0 end
 
-function GameMode:new()
+---@param secret_inputs table
+---@param properties table
+function GameMode:new(secret_inputs, properties)
 	self.replay_inputs = {}
 	self.random_low, self.random_high = love.math.getRandomSeed()
 	self.random_state = love.math.getRandomState()
 	self.save_replay = config.gamesettings.save_replay == 1
-	
+	self.replay_properties = properties or {}
+
 	self.grid = Grid(10, 24)
 	self.randomizer = Randomizer()
 	self.piece = nil
@@ -55,6 +58,7 @@ function GameMode:new()
 	self.draw_section_times = false
 	self.draw_secondary_section_times = false
 	self.big_mode = false
+	self.half_block_mode = false
 	self.irs = true
 	self.ihs = true
 	self.square_mode = false
@@ -65,6 +69,7 @@ function GameMode:new()
 		"S1", "S2", "S3", "S4", "S5", "S6", "S7", "S8", "S9",
 		"GM"
 	}
+	self.piece_spawn_offset = {x = 0, y = 0}
 	-- variables related to configurable parameters
 	self.drop_locked = false
 	self.hard_drop_locked = false
@@ -90,6 +95,7 @@ function GameMode:getDasLimit() return 15 end
 function GameMode:getDasCutDelay() return 0 end
 function GameMode:getGravity() return 1/64 end
 
+---@nodiscard
 function GameMode:getNextPiece(ruleset)
 	local shape = self.used_randomizer:nextPiece()
 	return {
@@ -99,6 +105,7 @@ function GameMode:getNextPiece(ruleset)
 	}
 end
 
+---@nodiscard
 function GameMode:getSkin()
 	return "2tie"
 end
@@ -120,15 +127,40 @@ function GameMode:initialize(ruleset)
 	self.lock_on_hard_drop = ({ruleset.harddrop_lock, self.instant_hard_drop, true,  false})[config.gamesettings.manlock]
 end
 
+function GameMode:isReplay()
+	return scene.replay ~= nil
+end
+
+---@param string string
+---@return any property
+function GameMode:getReplayProperty(string, default)
+	--This may return nil.
+	return self.replay_properties[string] or default
+end
+
+---@param string string
+function GameMode:setReplayProperty(string, data)
+	self.replay_properties[string] = data
+end
+
 function GameMode:saveReplay()
 	-- Save replay.
 	local replay = {}
+	replay["cambridge_version"] = version
+	replay["highscore_data"] = self:getHighscoreData()
+	replay["ruleset_override"] = self.ruleset_override
+	replay["properties"] = self.replay_properties
+	replay["toolassisted"] = self.toolassisted
+	replay["ineligible"] = self.ineligible or self.ruleset.ineligible
 	replay["inputs"] = self.replay_inputs
 	replay["random_low"] = self.random_low
 	replay["random_high"] = self.random_high
 	replay["random_state"] = self.random_state
 	replay["mode"] = self.name
 	replay["ruleset"] = self.ruleset.name
+	replay["mode_hash"] = self.hash
+	replay["ruleset_hash"] = self.ruleset.hash
+	replay["sha256_table"] = scene.sha_tbl
 	replay["timer"] = self.frames
 	replay["score"] = self.score
 	replay["level"] = self.level
@@ -141,10 +173,16 @@ function GameMode:saveReplay()
 	replay["timestamp"] = os.time()
 	replay["pause_count"] = self.pause_count
 	replay["pause_time"] = self.pause_time
+	replay["pause_timestamps"] = self.pause_timestamps
 	if love.filesystem.getInfo("replays") == nil then
 		love.filesystem.createDirectory("replays")
 	end
-	local init_name = string.format("replays/%s.crp", os.date("%Y-%m-%d_%H-%M-%S"))
+	local init_name
+	if config.gamesettings.replay_name == 2 then
+		init_name = string.format("replays/%s.crp", os.date("%Y-%m-%d_%H-%M-%S"))
+	else
+		init_name = string.format("replays/%s - %s - %s.crp", self.name, self.ruleset.name, os.date("%Y-%m-%d_%H-%M-%S"))
+	end
 	local replay_name = init_name
 	local replay_number = 0
 	while true do
@@ -156,6 +194,10 @@ function GameMode:saveReplay()
 		end
 	end
 	love.filesystem.write(replay_name, binser.serialize(replay))
+	if loaded_replays then
+		insertReplay(replay)
+		sortReplays()
+	end
 end
 
 function GameMode:addReplayInput(inputs)
@@ -175,15 +217,16 @@ function GameMode:addReplayInput(inputs)
 	end
 end
 
-function GameMode:update(inputs, ruleset)
-	if self.game_over or self.completed then
-		if self.save_replay and self.game_over_frames == 0 then
-			self:saveReplay()
+function GameMode:canPieceMove(inputs)
+	return not (inputs.up and self.lock_on_hard_drop and not self.hard_drop_locked)
+end
 
-			-- ensure replays are only saved once per game, incase self.game_over_frames == 0 for longer than one frame
-			self.save_replay = false
-		end
-		self.game_over_frames = self.game_over_frames + 1
+function GameMode:update(inputs, ruleset)
+	if self.completed then
+		self:updateOnGameComplete()
+		return
+	elseif self.game_over then
+		self:updateOnGameOver()
 		return
 	end
 
@@ -212,7 +255,7 @@ function GameMode:update(inputs, ruleset)
 	) then
 		self:onAttemptPieceRotate(self.piece, self.grid)
 	end
-	
+
 	if self.piece == nil then
 		self:processDelays(inputs, ruleset)
 	else
@@ -244,9 +287,7 @@ function GameMode:update(inputs, ruleset)
 
 		ruleset:processPiece(
 			inputs, self.piece, self.grid, self:getGravity(), self.prev_inputs,
-			(
-				inputs.up and self.lock_on_hard_drop and not self.hard_drop_locked
-			) and "none" or self.move,
+			self:canPieceMove(inputs) and self.move or "none",
 			self:getLockDelay(), self:getDropSpeed(),
 			self.drop_locked, self.hard_drop_locked,
 			self.enable_hard_drop, self.additive_gravity, self.classic_lock
@@ -312,7 +353,7 @@ function GameMode:update(inputs, ruleset)
 			if self.immobile_spin_bonus and
 			   self.piece.last_rotated and (
 				self.piece:isDropBlocked(self.grid) and
-				self.piece:isMoveBlocked(self.grid, { x=-1, y=0 }) and 
+				self.piece:isMoveBlocked(self.grid, { x=-1, y=0 }) and
 				self.piece:isMoveBlocked(self.grid, { x=1, y=0 }) and
 				self.piece:isMoveBlocked(self.grid, { x=0, y=-1 })
 			) then
@@ -320,7 +361,7 @@ function GameMode:update(inputs, ruleset)
 			end
 
 			self.grid:applyPiece(self.piece)
-			
+
 			-- mark squares (can be overridden)
 			if self.square_mode then
 				self.squares = self.squares + self.grid:markSquares()
@@ -364,9 +405,9 @@ function GameMode:update(inputs, ruleset)
 	self.prev_inputs = inputs
 end
 
-function GameMode:updateScore() end
+function GameMode:updateScore(level, drop_bonus, rows) end
 
-function GameMode:advanceOneFrame()
+function GameMode:advanceOneFrame(inputs, ruleset)
 	if self.clear then
 		self.completed = true
 	elseif self.ready_frames == 0 then
@@ -381,7 +422,7 @@ function GameMode:onAttemptPieceRotate(piece, grid) end
 function GameMode:onPieceMove(piece, grid, dx) end
 function GameMode:onPieceRotate(piece, grid, drot) end
 function GameMode:onPieceDrop(piece, grid, dy) end
-function GameMode:onPieceLock(piece, cleared_row_count) 
+function GameMode:onPieceLock(piece, cleared_row_count)
 	playSE("lock")
 end
 
@@ -401,6 +442,28 @@ function GameMode:onHardDrop(dropped_row_count)
 	self:onSoftDrop(dropped_row_count * 2)
 end
 
+function GameMode:updateOnGameOver()
+	if self.save_replay and self.game_over_frames == 0 then
+		self:saveReplay()
+
+		-- ensure replays are only saved once per game, incase self.game_over_frames == 0 for longer than one frame
+		self.save_replay = false
+	end
+	self.game_over_frames = self.game_over_frames + 1
+end
+
+function GameMode:updateOnGameComplete()
+	return self:updateOnGameOver()
+end
+
+function GameMode:drawOnGameOver()
+	self:onGameOver() -- legacy, to not break anythin'
+end
+
+function GameMode:drawOnGameComplete()
+	self:onGameComplete() -- legacy, to not break anythin'
+end
+
 function GameMode:onGameOver()
 	switchBGM(nil)
 	pitchBGM(1)
@@ -408,7 +471,7 @@ function GameMode:onGameOver()
 	local animation_length = 120
 	if self.game_over_frames < animation_length then
 		-- Show field for a bit, then fade out.
-		alpha = math.pow(2048, self.game_over_frames/animation_length - 1)
+		alpha = 2048 ^ (self.game_over_frames/animation_length - 1)
 	elseif self.game_over_frames < 2 * animation_length then
 		-- Keep field hidden for a short time, then pop it back in (for screenshots).
 		alpha = 1
@@ -424,7 +487,8 @@ function GameMode:onGameComplete()
 	self:onGameOver()
 end
 
-function GameMode:onExit() end
+function GameMode:onExit()
+end
 
 -- DAS functions
 
@@ -465,7 +529,7 @@ function GameMode:stopDAS()
 	self.das = { direction = "none", frames = -1 }
 end
 
-function GameMode:chargeDAS(inputs)
+function GameMode:chargeDAS(inputs, das_limit, arr)
 	if config.gamesettings.das_last_key == 2 then
 		if inputs["right"] == true and self.das.direction ~= "right" and not self.prev_inputs["right"] then
 			self:startRightDAS()
@@ -638,7 +702,7 @@ function GameMode:initializeNextPiece(
 		self.drop_locked, self.hard_drop_locked, self.big_mode,
 		(
 			self.frames == 0 or (ruleset.are and self:getARE() ~= 0)
-		) and self.irs or false
+		) and self.irs or false, self.half_block_mode, self.piece_spawn_offset
 	)
 	if config.gamesettings.buffer_lock == 3 then
 		if self.buffer_hard_drop then
@@ -797,9 +861,9 @@ function GameMode:drawLineClearAnimation()
 				animation_table[1], animation_table[2],
 				animation_table[3], animation_table[4]
 			)
-			love.graphics.draw(
+			drawSizeIndependentImage(
 				blocks[animation_table[5]][animation_table[6]],
-				animation_table[7], animation_table[8]
+				animation_table[7], animation_table[8], 0, 16, 16
 			)
 		end
 	end
@@ -839,11 +903,11 @@ function GameMode:drawNextQueue(ruleset)
 	else
 		colourscheme = ruleset.colourscheme
 	end
-	function drawPiece(piece, skin, offsets, pos_x, pos_y)
+	local function drawPiece(piece, skin, offsets, pos_x, pos_y)
 		for index, offset in pairs(offsets) do
-			local x = offset.x + ruleset:getDrawOffset(piece, rotation).x + ruleset.spawn_positions[piece].x
-			local y = offset.y + ruleset:getDrawOffset(piece, rotation).y + 4.7
-			love.graphics.draw(blocks[skin][colourscheme[piece]], pos_x+x*16, pos_y+y*16)
+			local x = offset.x + ruleset:getDrawOffset(piece).x + ruleset.spawn_positions[piece].x
+			local y = offset.y + ruleset:getDrawOffset(piece).y + 4.7
+			drawSizeIndependentImage(blocks[skin][colourscheme[piece]], pos_x+x*16, pos_y+y*16, 0, 16, 16)
 		end
 	end
 	for i = 1, self.next_queue_length do
@@ -860,8 +924,8 @@ function GameMode:drawNextQueue(ruleset)
 	if self.hold_queue ~= nil and self.enable_hold then
 		self:setHoldOpacity()
 		drawPiece(
-			self.hold_queue.shape, 
-			self.hold_queue.skin, 
+			self.hold_queue.shape,
+			self.hold_queue.skin,
 			ruleset.block_offsets[self.hold_queue.shape][self.hold_queue.orientation],
 			-16, -32
 		)
@@ -878,10 +942,12 @@ function GameMode:setHoldOpacity()
 	love.graphics.setColor(colour, colour, colour, 1)
 end
 
+---@nodiscard
 function GameMode:getBackground()
 	return 0
 end
 
+---@nodiscard
 function GameMode:getHighscoreData()
 	return {}
 end
@@ -900,6 +966,7 @@ function GameMode:drawScoringInfo()
 		love.graphics.printf("NEXT", 64, 40, 40, "left")
 	end
 
+	love.graphics.setFont(font_3x5)
 	love.graphics.print(
 		self.das.direction .. " " ..
 		self.das.frames .. " " ..
@@ -947,7 +1014,7 @@ function GameMode:drawSectionTimesWithSecondary(current_section, section_limit)
 	end
 
 	local current_x
-	if table.getn(self.section_times) < table.getn(self.secondary_section_times) then
+	if #self.section_times < #self.secondary_section_times then
 		current_x = section_x
 	else
 		current_x = section_secondary_x
@@ -960,7 +1027,7 @@ end
 
 function GameMode:drawSectionTimesWithSplits(current_section, section_limit)
 	section_limit = section_limit or math.huge
-	
+
 	local section_x = 440
 	local split_x = 530
 
@@ -975,7 +1042,7 @@ function GameMode:drawSectionTimesWithSplits(current_section, section_limit)
 			love.graphics.printf(formatTime(split_time), split_x, 40 + 20 * section, 90, "left")
 		end
 	end
-	
+
 	if (current_section <= section_limit) then
 		love.graphics.printf(formatTime(self.frames - self.section_start_time), section_x, 40 + 20 * current_section, 90, "left")
 		love.graphics.printf(formatTime(self.frames), split_x, 40 + 20 * current_section, 90, "left")
@@ -1062,7 +1129,7 @@ function GameMode:draw(paused)
 
 	love.graphics.setColor(1, 1, 1, 1)
 	love.graphics.setFont(font_3x5_2)
-	if config.gamesettings.display_gamemode == 1 then
+	if config.visualsettings.display_gamemode == 1 then
 		love.graphics.printf(
 			self.name .. " - " .. self.ruleset.name,
 			0, 460, 640, "left"
@@ -1074,9 +1141,9 @@ function GameMode:draw(paused)
 	end
 
 	if self.completed then
-		self:onGameComplete()
+		self:drawOnGameComplete()
 	elseif self.game_over then
-		self:onGameOver()
+		self:drawOnGameOver()
 	end
 end
 

@@ -76,8 +76,11 @@ elseif osname == "Windows" then
     ffi.C.WideCharToMultiByte(ffi.C.CP_UTF8, 0, sourceWide, sourceSize, sourceChar, sourceSize, nil, nil)
 
     source = ffi.string(sourceChar)
-
-    discordRPClib = ffi.load(source.."/libs/discord-rpc.dll")
+    if jit.arch == "x86" then
+        discordRPClib = ffi.load(source.."/libs/discord-rpc_x86.dll")
+    elseif jit.arch == "x64" then
+        discordRPClib = ffi.load(source.."/libs/discord-rpc_x64.dll")
+    end
 else
     -- Else it crashes later on
     error(string.format("Discord rpc not supported on platform (%s)", osname))

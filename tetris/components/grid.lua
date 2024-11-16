@@ -1,5 +1,6 @@
 local Object = require 'libs.classic'
 
+---@class Grid
 local Grid = Object:extend()
 
 local empty = { skin = "", colour = "" }
@@ -30,6 +31,7 @@ function Grid:clear()
 	end
 end
 
+---@nodiscard
 function Grid:getCell(x, y)
 	if x < 1 or x > self.width or y > self.height then return oob
 	elseif y < 1 then return empty
@@ -37,10 +39,21 @@ function Grid:getCell(x, y)
 	end
 end
 
+function Grid:setCell(x, y, cell, age)
+	if x < 1 or x > self.width or y > self.height or y < 1 then
+		return false
+	end
+	self.grid[y][x] = cell or empty
+	self.grid_age[y][x] = age or 0
+	return true
+end
+
+---@nodiscard
 function Grid:isOccupied(x, y)
 	return self:getCell(x+1, y+1) ~= empty
 end
 
+---@nodiscard
 function Grid:isRowFull(row)
 	for index, square in pairs(self.grid[row]) do
 		if square == empty then return false end
@@ -48,6 +61,7 @@ function Grid:isRowFull(row)
 	return true
 end
 
+---@nodiscard
 function Grid:canPlacePiece(piece)
 	if piece.big then
 		return self:canPlaceBigPiece(piece)
@@ -64,16 +78,17 @@ function Grid:canPlacePiece(piece)
 	return true
 end
 
+---@nodiscard
 function Grid:canPlaceBigPiece(piece)
 	local offsets = piece:getBlockOffsets()
 	for index, offset in pairs(offsets) do
-		local x = piece.position.x + offset.x
-		local y = piece.position.y + offset.y
+		local x = piece.position.x + offset.x * 2
+		local y = piece.position.y + offset.y * 2
 		if (
-		   self:isOccupied(x * 2 + 0, y * 2 + 0)
-		or self:isOccupied(x * 2 + 1, y * 2 + 0)
-		or self:isOccupied(x * 2 + 0, y * 2 + 1)
-		or self:isOccupied(x * 2 + 1, y * 2 + 1)
+		   self:isOccupied(x + 0, y + 0)
+		or self:isOccupied(x + 1, y + 0)
+		or self:isOccupied(x + 0, y + 1)
+		or self:isOccupied(x + 1, y + 1)
 		) then
 			return false
 		end
@@ -81,17 +96,37 @@ function Grid:canPlaceBigPiece(piece)
 	return true
 end
 
+
+---@nodiscard
+function Grid:canPlaceBigPieceInVisibleGrid(piece)
+	local offsets = piece:getBlockOffsets()
+	for index, offset in pairs(offsets) do
+		local x = piece.position.x + offset.x * 2
+		local y = piece.position.y + offset.y * 2
+		if (
+		   y < 3
+		or self:isOccupied(x + 0, y + 0)
+		or self:isOccupied(x + 1, y + 0)
+		or self:isOccupied(x + 0, y + 1)
+		or self:isOccupied(x + 1, y + 1)
+		) then
+			return false
+		end
+	end
+	return true
+end
+
+---@nodiscard
 function Grid:canPlacePieceInVisibleGrid(piece)
 	if piece.big then
-		return self:canPlaceBigPiece(piece)
-		-- forget canPlaceBigPieceInVisibleGrid for now
+		return self:canPlaceBigPieceInVisibleGrid(piece)
 	end
 
 	local offsets = piece:getBlockOffsets()
 	for index, offset in pairs(offsets) do
 		local x = piece.position.x + offset.x
 		local y = piece.position.y + offset.y
-		if y < 4 or self:isOccupied(x, y) ~= empty then
+		if y < 4 or self:isOccupied(x, y) then
 			return false
 		end
 	end
@@ -179,6 +214,7 @@ end
 function Grid:clearSpecificRow(row)
 	for col = 1, self.width do
 		self.grid[row][col] = empty
+		self.grid_age[row][col] = 0
 	end
 end
 
@@ -187,12 +223,9 @@ function Grid:clearBlock(x, y)
 end
 
 function Grid:clearBottomRows(num)
-	local old_isRowFull = self.isRowFull
-    self.isRowFull = function(self, row)
-		return row >= self.height + 1 - num
+	for i = self.height, self.height - num + 1, -1 do
+		self:clearSpecificRow(i)
 	end
-    self:clearClearedRows()
-    self.isRowFull = old_isRowFull
 end
 
 function Grid:applyPiece(piece)
@@ -200,10 +233,10 @@ function Grid:applyPiece(piece)
 		self:applyBigPiece(piece)
 		return
 	end
-	offsets = piece:getBlockOffsets()
+	local offsets = piece:getBlockOffsets()
 	for index, offset in pairs(offsets) do
-		x = piece.position.x + offset.x
-		y = piece.position.y + offset.y
+		local x = piece.position.x + offset.x
+		local y = piece.position.y + offset.y
 		if y + 1 > 0 and y < self.height then
 			self.grid[y+1][x+1] = {
 				skin = piece.skin,
@@ -214,14 +247,14 @@ function Grid:applyPiece(piece)
 end
 
 function Grid:applyBigPiece(piece)
-	offsets = piece:getBlockOffsets()
+	local offsets = piece:getBlockOffsets()
 	for index, offset in pairs(offsets) do
-		x = piece.position.x + offset.x
-		y = piece.position.y + offset.y
+		local x = piece.position.x + offset.x * 2
+		local y = piece.position.y + offset.y * 2
 		for a = 1, 2 do
 			for b = 1, 2 do
-				if y*2+a > 0 and y*2 < self.height then
-					self.grid[y*2+a][x*2+b] = {
+				if y+a > 0 and y < self.height then
+					self.grid[y+a][x+b] = {
 						skin = piece.skin,
 						colour = piece.colour
 					}
@@ -232,6 +265,7 @@ function Grid:applyBigPiece(piece)
 end
 
 -- places where you see this take an argument used the old, buggy method
+---@nodiscard
 function Grid:checkForBravo()
 	for i = 0, self.height - 1 do
 		if not self:isRowFull(i+1) then
@@ -243,6 +277,7 @@ function Grid:checkForBravo()
 	return true
 end
 
+---@nodiscard
 function Grid:checkStackHeight()
 	for i = 0, self.height - 1 do
 		for j = 0, self.width - 1 do
@@ -252,6 +287,7 @@ function Grid:checkStackHeight()
 	return 0
 end
 
+---@nodiscard
 function Grid:checkSecretGrade()
 	local sgrade = 0
 	for i=23,5,-1 do
@@ -397,6 +433,24 @@ function Grid:scanForSquares()
 	return table
 end
 
+function Grid:drawCellOutline(x, y, brightness, alpha)
+	love.graphics.setColor(brightness, brightness, brightness, alpha)
+	love.graphics.setLineWidth(1)
+	if y > 5 and self.grid[y-1][x] == empty or self.grid[y-1][x].colour == "X" then
+		love.graphics.line(48.0+x*16, -0.5+y*16, 64.0+x*16, -0.5+y*16)
+	end
+	if y < self.height and self.grid[y+1][x] == empty or
+	(y + 1 <= self.height and self.grid[y+1][x].colour == "X") then
+		love.graphics.line(48.0+x*16, 16.5+y*16, 64.0+x*16, 16.5+y*16)
+	end
+	if x > 1 and self.grid[y][x-1] == empty then
+		love.graphics.line(47.5+x*16, -0.0+y*16, 47.5+x*16, 16.0+y*16)
+	end
+	if x < self.width and self.grid[y][x+1] == empty then
+		love.graphics.line(64.5+x*16, -0.0+y*16, 64.5+x*16, 16.0+y*16)
+	end
+end
+
 function Grid:update()
 	for y = 1, self.height do
 		for x = 1, self.width do
@@ -414,7 +468,7 @@ function Grid:draw()
 			blocks[self.grid[y][x].skin][self.grid[y][x].colour] then
 				if self.grid_age[y][x] < 2 then
 					love.graphics.setColor(1, 1, 1, 1)
-					love.graphics.draw(blocks[self.grid[y][x].skin]["F"], 48+x*16, y*16)
+					drawSizeIndependentImage(blocks[self.grid[y][x].skin]["F"], 48+x*16, y*16, 0, 16, 16)
 				else
 					if self.grid[y][x].colour == "X" then
 						love.graphics.setColor(0, 0, 0, 0)
@@ -423,24 +477,10 @@ function Grid:draw()
 					else
 						love.graphics.setColor(0.5, 0.5, 0.5, 1)
 					end
-					love.graphics.draw(blocks[self.grid[y][x].skin][self.grid[y][x].colour], 48+x*16, y*16)
+					drawSizeIndependentImage(blocks[self.grid[y][x].skin][self.grid[y][x].colour], 48+x*16, y*16, 0, 16, 16)
 				end
 				if self.grid[y][x].skin ~= "bone" and self.grid[y][x].colour ~= "X" then
-					love.graphics.setColor(0.8, 0.8, 0.8, 1)
-					love.graphics.setLineWidth(1)
-					if y > 5 and self.grid[y-1][x] == empty or self.grid[y-1][x].colour == "X" then
-						love.graphics.line(48.0+x*16, -0.5+y*16, 64.0+x*16, -0.5+y*16)
-					end
-					if y < self.height and self.grid[y+1][x] == empty or
-					(y + 1 <= self.height and self.grid[y+1][x].colour == "X") then
-						love.graphics.line(48.0+x*16, 16.5+y*16, 64.0+x*16, 16.5+y*16)
-					end
-					if x > 1 and self.grid[y][x-1] == empty then
-						love.graphics.line(47.5+x*16, -0.0+y*16, 47.5+x*16, 16.0+y*16)
-					end
-					if x < self.width and self.grid[y][x+1] == empty then
-						love.graphics.line(64.5+x*16, -0.0+y*16, 64.5+x*16, 16.0+y*16)
-					end
+					self:drawCellOutline(x, y, 0.8, 1)
 				end
 			end
 		end
@@ -451,29 +491,20 @@ function Grid:drawOutline()
 	for y = 5, self.height do
 		for x = 1, self.width do
 			if self.grid[y][x] ~= empty and self.grid[y][x].colour ~= "X" then
-				love.graphics.setColor(0.8, 0.8, 0.8, 1)
-				love.graphics.setLineWidth(1)
-				if y > 5 and self.grid[y-1][x] == empty or self.grid[y-1][x].colour == "X" then
-					love.graphics.line(48.0+x*16, -0.5+y*16, 64.0+x*16, -0.5+y*16)
-				end
-				if y < self.height and self.grid[y+1][x] == empty or
-				(y + 1 <= self.height and self.grid[y+1][x].colour == "X") then
-					love.graphics.line(48.0+x*16, 16.5+y*16, 64.0+x*16, 16.5+y*16)
-				end
-				if x > 1 and self.grid[y][x-1] == empty then
-					love.graphics.line(47.5+x*16, -0.0+y*16, 47.5+x*16, 16.0+y*16)
-				end
-				if x < self.width and self.grid[y][x+1] == empty then
-					love.graphics.line(64.5+x*16, -0.0+y*16, 64.5+x*16, 16.0+y*16)
-				end
+				self:drawCellOutline(x, y, 0.8, 1)
 			end
 		end
 	end
 end
 
+---@param opacity_function fun(age:number)
+---@param garbage_opacity_function fun(age:number)
+---@param lock_flash boolean
+---@param brightness number
 function Grid:drawInvisible(opacity_function, garbage_opacity_function, lock_flash, brightness)
 	lock_flash = lock_flash == nil and true or lock_flash
 	brightness = brightness == nil and 0.5 or brightness
+	local opacity
 	for y = 5, self.height do
 		for x = 1, self.width do
 			if self.grid[y][x] ~= empty then
@@ -485,24 +516,10 @@ function Grid:drawInvisible(opacity_function, garbage_opacity_function, lock_fla
 					opacity = opacity_function(self.grid_age[y][x])
 				end
 				love.graphics.setColor(brightness, brightness, brightness, opacity)
-				love.graphics.draw(blocks[self.grid[y][x].skin][self.grid[y][x].colour], 48+x*16, y*16)
+				drawSizeIndependentImage(blocks[self.grid[y][x].skin][self.grid[y][x].colour], 48+x*16, y*16, 0, 16, 16)
 				if lock_flash then
 					if opacity > 0 and self.grid[y][x].colour ~= "X" then
-						love.graphics.setColor(0.64, 0.64, 0.64)
-						love.graphics.setLineWidth(1)
-						if y > 5 and self.grid[y-1][x] == empty or self.grid[y-1][x].colour == "X" then
-							love.graphics.line(48.0+x*16, -0.5+y*16, 64.0+x*16, -0.5+y*16)
-						end
-						if y < self.height and self.grid[y+1][x] == empty or
-						(y + 1 <= self.height and self.grid[y+1][x].colour == "X") then
-							love.graphics.line(48.0+x*16, 16.5+y*16, 64.0+x*16, 16.5+y*16)
-						end
-						if x > 1 and self.grid[y][x-1] == empty then
-							love.graphics.line(47.5+x*16, -0.0+y*16, 47.5+x*16, 16.0+y*16)
-						end
-						if x < self.width and self.grid[y][x+1] == empty then
-							love.graphics.line(64.5+x*16, -0.0+y*16, 64.5+x*16, 16.0+y*16)
-						end
+						self:drawCellOutline(x, y, 0.64)
 					end
 				end
 			end
@@ -510,42 +527,29 @@ function Grid:drawInvisible(opacity_function, garbage_opacity_function, lock_fla
 	end
 end
 
+---@param colour_function fun(game, block:{skin:string, colour:string}, x:number, y:number, age:number): number, number, number, number, number
 function Grid:drawCustom(colour_function, gamestate)
-    --[[
-        colour_function: (game, block, x, y, age) -> (R, G, B, A, outlineA)
-        When called, calls the supplied function on every block passing the block itself as argument
-        as well as coordinates and the grid_age value of the same cell.
-        Should return a RGBA colour for the block, as well as the opacity of the stack outline (0 for no outline).
-        
-        gamestate: the gamemode instance itself to pass in colour_function
-    ]]
+	--[[
+		colour_function: (game, block, x, y, age) -> (R, G, B, A, outlineA)
+		When called, calls the supplied function on every block passing the block itself as argument
+		as well as coordinates and the grid_age value of the same cell.
+		Should return a RGBA colour for the block, as well as the opacity of the stack outline (0 for no outline).
+		
+		gamestate: the gamemode instance itself to pass in colour_function
+	]]
 	for y = 5, self.height do
 		for x = 1, self.width do
-            local block = self.grid[y][x]
+			local block = self.grid[y][x]
 			if block ~= empty then
-                local R, G, B, A, outline = colour_function(gamestate, block, x, y, self.grid_age[y][x])
+				local R, G, B, A, outline = colour_function(gamestate, block, x, y, self.grid_age[y][x])
 				if self.grid[y][x].colour == "X" then
 					A = 0
 				end
 				love.graphics.setColor(R, G, B, A)
-				love.graphics.draw(blocks[self.grid[y][x].skin][self.grid[y][x].colour], 48+x*16, y*16)
-                if outline > 0 and self.grid[y][x].colour ~= "X" then
-                    love.graphics.setColor(0.64, 0.64, 0.64, outline)
-                    love.graphics.setLineWidth(1)
-                    if y > 5 and self.grid[y-1][x] == empty or self.grid[y-1][x].colour == "X" then
-						love.graphics.line(48.0+x*16, -0.5+y*16, 64.0+x*16, -0.5+y*16)
-					end
-					if y < self.height and self.grid[y+1][x] == empty or
-					(y + 1 <= self.height and self.grid[y+1][x].colour == "X") then
-						love.graphics.line(48.0+x*16, 16.5+y*16, 64.0+x*16, 16.5+y*16)
-					end
-					if x > 1 and self.grid[y][x-1] == empty then
-						love.graphics.line(47.5+x*16, -0.0+y*16, 47.5+x*16, 16.0+y*16)
-					end
-					if x < self.width and self.grid[y][x+1] == empty then
-						love.graphics.line(64.5+x*16, -0.0+y*16, 64.5+x*16, 16.0+y*16)
-					end
-                end
+				drawSizeIndependentImage(blocks[self.grid[y][x].skin][self.grid[y][x].colour], 48+x*16, y*16, 0, 16, 16)
+				if outline > 0 and self.grid[y][x].colour ~= "X" then
+					self:drawCellOutline(x, y, 0.64, outline)
+				end
 			end
 		end
 	end

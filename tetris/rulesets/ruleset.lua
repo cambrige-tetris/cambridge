@@ -79,7 +79,7 @@ end
 
 function Ruleset:attemptRotate(new_inputs, piece, grid, initial)
 	local rot_dir = 0
-	
+
 	if (new_inputs["rotate_left"] or new_inputs["rotate_left2"]) then
 		rot_dir = 3
 	elseif (new_inputs["rotate_right"] or new_inputs["rotate_right2"]) then
@@ -89,9 +89,9 @@ function Ruleset:attemptRotate(new_inputs, piece, grid, initial)
 	end
 
 	if rot_dir == 0 then return end
-    if config.gamesettings.world_reverse == 3 or (self.world and config.gamesettings.world_reverse == 2) then
-        rot_dir = 4 - rot_dir
-    end
+	if config.gamesettings.world_reverse == 3 or (self.world and config.gamesettings.world_reverse == 2) then
+		rot_dir = 4 - rot_dir
+	end
 
 	local new_piece = piece:withRelativeRotation(rot_dir)
 
@@ -113,16 +113,17 @@ end
 
 function Ruleset:movePiece(piece, grid, move, instant)
 	if not self:canPieceMove(piece, grid) then return end
+	local block_offset = (piece.big and not piece.half_block) and 2 or 1
 	local was_drop_blocked = piece:isDropBlocked(grid)
 	local offset = ({x=0, y=0})
 	local moves = 0
 	local y = piece.position.y
 	if move == "left" then
 		offset.x = -1
-		moves = 1
+		moves = block_offset
 	elseif move == "right" then
 		offset.x = 1
-		moves = 1
+		moves = block_offset
 	elseif move == "speedleft" then
 		offset.x = -1
 		moves = grid.width
@@ -137,7 +138,8 @@ function Ruleset:movePiece(piece, grid, move, instant)
 		else
 			piece:moveInGrid(offset, 1, grid, false)
 		end
-		if piece.position.x ~= x then
+		--this big piece fix is jank
+		if piece.position.x ~= x and (block_offset == 1 or i % 2 == 0) then
 			self:onPieceMove(piece, grid)
 			if piece.locked then break end
 		end
@@ -198,7 +200,7 @@ end
 function Ruleset:initializePiece(
 	inputs, data, grid, gravity, prev_inputs,
 	move, lock_delay, drop_speed,
-	drop_locked, hard_drop_locked, big, irs
+	drop_locked, hard_drop_locked, big, irs, half_block, offset
 )
 	local spawn_positions
 	if big then
@@ -209,32 +211,43 @@ function Ruleset:initializePiece(
 
 	local colours
 	if table.equalvalues(
-        table.keys(self.colourscheme), {"I", "J", "L", "O", "S", "T", "Z"}
-    ) then
+		table.keys(self.colourscheme), {"I", "J", "L", "O", "S", "T", "Z"}
+	) then
 		colours = ({self.colourscheme, ColourSchemes.Arika, ColourSchemes.TTC})[config.gamesettings.piece_colour]
 	else
 		colours = self.colourscheme
 	end
-	
+
 	local spawn_x = math.floor(spawn_positions[data.shape].x * grid.width / 10)
 
 	local spawn_dy
 	if (config.gamesettings.spawn_positions == 1) then
 		spawn_dy = (
 			self.spawn_above_field and
-			self:getAboveFieldOffset(data.shape, data.orientation) or 0
+			(self:getAboveFieldOffset(data.shape, data.orientation) * (big and 2 or 1)) or 0
 		)
 	else
 		spawn_dy = (
 			config.gamesettings.spawn_positions == 3 and
-			self:getAboveFieldOffset(data.shape, data.orientation) or 0
+			(self:getAboveFieldOffset(data.shape, data.orientation) * (big and 2 or 1)) or 0
 		)
+	end
+
+	local spawn_y = spawn_positions[data.shape].y - spawn_dy
+	if big then
+		spawn_x = spawn_x + math.floor(spawn_positions[data.shape].x * grid.width / 10)
+		spawn_y = spawn_y + spawn_positions[data.shape].y
+	end
+
+	if offset then
+		spawn_x = spawn_x + offset.x
+		spawn_y = spawn_y + offset.y
 	end
 
 	local piece = Piece(data.shape, data.orientation - 1, {
 		x = spawn_x,
-		y = spawn_positions[data.shape].y - spawn_dy
-	}, self.block_offsets, 0, 0, data.skin, colours[data.shape], big)
+		y = spawn_y
+	}, self.block_offsets, 0, 0, data.skin, colours[data.shape], big, half_block)
 
 	self:onPieceCreate(piece)
 	if irs then
@@ -255,7 +268,7 @@ function Ruleset:processPiece(
 	drop_locked, hard_drop_locked,
 	hard_drop_enabled, additive_gravity, classic_lock
 )
-	local synchroes_allowed = ({not self.world, true, false})[config.gamesettings.synchroes_allowed]
+	local synchroes_allowed = ({self.synchroes == nil and not self.world or self.synchroes, true, false})[config.gamesettings.synchroes_allowed]
 
 	if synchroes_allowed then
 		self:rotatePiece(inputs, piece, grid, prev_inputs, false)
@@ -273,8 +286,8 @@ end
 
 function Ruleset:canPieceMove(piece, grid) return true end
 function Ruleset:canPieceRotate(piece, grid) return true end
-function Ruleset:onPieceMove(piece) end
-function Ruleset:onPieceRotate(piece) end
-function Ruleset:onPieceDrop(piece) end
+function Ruleset:onPieceMove(piece, grid) end
+function Ruleset:onPieceRotate(piece, grid) end
+function Ruleset:onPieceDrop(piece, grid) end
 
 return Ruleset
