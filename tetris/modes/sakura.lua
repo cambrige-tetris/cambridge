@@ -273,6 +273,11 @@ function SakuraGame:new(secret_inputs)
 			secret_inputs.rotate_left and secret_inputs.rotate_right
 		) and History6RollsRandomizer() or SakuraRandomizer()
 	)
+	for key, value in pairs(secret_inputs) do
+		if value == true and key ~= "rotate_left" and key ~= "rotate_right" then
+			self.secret_erasure = true
+		end
+	end
 
 	self.current_map = 1
 	self.time_limit = 10800

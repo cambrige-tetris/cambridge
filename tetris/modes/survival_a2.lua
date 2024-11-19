@@ -14,8 +14,15 @@ SurvivalA2Game.tagline = "The game starts fast and only gets faster!"
 
 
 
-function SurvivalA2Game:new()
-	SurvivalA2Game.super:new()
+function SurvivalA2Game:new(secret_inputs)
+	SurvivalA2Game.super:new(secret_inputs)
+
+	for key, value in pairs(secret_inputs) do
+		if value == true then
+			self.secret_erasure = true
+		end
+	end
+
 	setTargetFPS(61.68)
 	self.roll_frames = 0
 	self.combo = 1
@@ -82,6 +89,11 @@ function SurvivalA2Game:hitTorikan(old_level, new_level)
 end
 
 function SurvivalA2Game:advanceOneFrame()
+	if self.secret_erasure then
+		for i = 1, 3 do
+			self.grid:clearSpecificRow(i)
+		end
+	end
 	if self.clear then
 		self.roll_frames = self.roll_frames + 1
 		if self.roll_frames > 1800 then

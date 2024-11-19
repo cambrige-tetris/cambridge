@@ -14,9 +14,15 @@ MarathonA1Game.tagline = "Can you score enough points to reach the title of Gran
 
 
 
-function MarathonA1Game:new()
-	MarathonA1Game.super:new()
+function MarathonA1Game:new(secret_inputs)
+	MarathonA1Game.super:new(secret_inputs)
 	
+	for key, value in pairs(secret_inputs) do
+		if value == true then
+			self.secret_erasure = true
+		end
+	end
+
 	self.roll_frames = 0
 	self.combo = 1
 	self.bravos = 0
@@ -118,6 +124,11 @@ function MarathonA1Game:getGravity()
 end
 
 function MarathonA1Game:advanceOneFrame()
+	if self.secret_erasure then
+		for i = 1, 3 do
+			self.grid:clearSpecificRow(i)
+		end
+	end
 	if self.clear then
 		self.roll_frames = self.roll_frames + 1
 		if self.roll_frames > 2968 then

@@ -14,8 +14,14 @@ MarathonA3Game.tagline = "The game gets faster way more quickly! Can you get all
 
 
 
-function MarathonA3Game:new()
-	MarathonA3Game.super:new()
+function MarathonA3Game:new(secret_inputs)
+	MarathonA3Game.super:new(secret_inputs)
+
+	for key, value in pairs(secret_inputs) do
+		if value == true then
+			self.secret_erasure = true
+		end
+	end
 
 	self.speed_level = 0
 	self.roll_frames = 0
@@ -129,6 +135,11 @@ function MarathonA3Game:getGravity()
 end
 
 function MarathonA3Game:advanceOneFrame()
+	if self.secret_erasure then
+		for i = 1, 3 do
+			self.grid:clearSpecificRow(i)
+		end
+	end
 	if self.clear then
 		self.roll_frames = self.roll_frames + 1
 		if self.roll_frames < 0 then

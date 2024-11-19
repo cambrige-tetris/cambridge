@@ -14,8 +14,14 @@ MarathonA2Game.tagline = "The points don't matter! Can you reach the invisible r
 
 
 
-function MarathonA2Game:new()
-	MarathonA2Game.super:new()
+function MarathonA2Game:new(secret_inputs)
+	MarathonA2Game.super:new(secret_inputs)
+
+	for key, value in pairs(secret_inputs) do
+		if value == true then
+			self.secret_erasure = true
+		end
+	end
 
 	setTargetFPS(61.68)
 	self.roll_frames = 0
@@ -114,6 +120,11 @@ function MarathonA2Game:getGravity()
 end
 
 function MarathonA2Game:advanceOneFrame()
+	if self.secret_erasure then
+		for i = 1, 3 do
+			self.grid:clearSpecificRow(i)
+		end
+	end
 	if self.clear then
 		self.roll_frames = self.roll_frames + 1
 		if self.roll_frames < 0 then return false end
