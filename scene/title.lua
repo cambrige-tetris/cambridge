@@ -17,6 +17,43 @@ TitleScene.menu_screens = {
 	ExitScene,
 }
 
+local splashtext = {
+	"Welcome to Cambridge!",
+	"Random text!",
+	"Put the block!",
+	"Trans rights!",
+	"20G gravity!",
+	"3next 1hold!",
+	"4next 2hold..?",
+	"Also try Techmino!",
+	"Also try Nullpomino!",
+	"Now with new funky mode!",
+	"Now with supersonic drop!",
+	"Mark!",
+	"aeiou",
+	"Also try TETR.IO!",
+	"Also try Shiromino!",
+	"Also try\nSpirit Drop!",
+	"Thank you, Milla!",
+	"Thank you, Kirby!",
+	"Thank you, Alexey!",
+	"Thank you, Joe!",
+	"Thank you, Oshi!",
+	"No soundtrack required!",
+	"Batteries not included!",
+	"Also try MoB!",
+	"Also try EBG!",
+	"Also try TGM!",
+	"Also try TAP!",
+	"Also try Ti!",
+	"Also try Cambridge!",
+	"O-spin double!",
+	"I-spin quad!",
+	"COOL !!",
+	"Let's go better next time!",
+	"Stacker? I barely even know her!"
+}
+local splash = ""
 local mainmenuidle = {
 	"Idle",
 	"On title screen",
@@ -38,10 +75,12 @@ local mainmenuidle = {
 	"Welcome to Cambridge!",
 	"who even reads these",
 	"Made with love in LOVE!",
-	"This is probably the longest RPC string out of every possible RPC string that can be displayed."
+	"This is probably the longest RPC string out of every possible RPC string that can be displayed.",
+	"Trying to see all the funny splash text (maybe)"
 }
 
 function TitleScene:new()
+	splash = splashtext[love.math.random(#splashtext)]
 	self.love2d_major, self.love2d_minor, self.love2d_revision = love.getVersion()
 	self.main_menu_state = 1
 	self.frames = 0
@@ -157,7 +196,7 @@ function TitleScene:render()
 		2, 2
 	)
 	]]
-	--love.graphics.printf("Thanks for 1 year!", 430, 280, 160, "center")
+	love.graphics.printf(splash, 460, 300, 250, "center", 0, 0.625, 0.625)
 
 	love.graphics.setFont(font_3x5_2)
 	love.graphics.setColor(1, 1, 1, self.snow_bg_opacity)
